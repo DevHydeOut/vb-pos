@@ -1,0 +1,531 @@
+/* src/app/globals.css                                                          */
+/* ═══════════════════════════════════════════════════════════════════════════  */
+/*  PIGARO — DESIGN TOKEN SYSTEM                                                */
+/*                                                                              */
+/*  This is the SINGLE SOURCE OF TRUTH for the entire app's visual style.      */
+/*  To rebrand or restyle:                                                      */
+/*    • Change brand colors  → update --color-primary lines only               */
+/*    • Change all corners   → update Radius Scale section                     */
+/*    • Change font          → update layout.tsx import + --font-sans here     */
+/*    • Change spacing feel  → update Spacing & Layout section                 */
+/*                                                                              */
+/*  SECTIONS:                                                                   */
+/*    1. Tailwind v4 import                                                      */
+/*    2. @theme — design tokens (light mode base)                               */
+/*       2a. Core UI colors (shadcn compatible)                                 */
+/*       2b. Semantic status colors                                             */
+/*       2c. Sidebar colors                                                     */
+/*       2d. Border radius scale                                                */
+/*       2e. Typography scale                                                   */
+/*       2f. Spacing and layout tokens                                          */
+/*       2g. Shadow scale                                                       */
+/*       2h. Animation tokens                                                   */
+/*       2i. Font families                                                      */
+/*    3. Dark mode overrides (.dark)                                            */
+/*    4. Base layer — HTML defaults                                             */
+/*    5. Utility layer — helper classes                                         */
+/*    6. Print styles (interim)                                                 */
+/* ═══════════════════════════════════════════════════════════════════════════  */
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   1. TAILWIND V4 IMPORT
+   ──────────────────────────────────────────────────────────────────────────── */
+@import "tailwindcss";
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   2. DESIGN TOKENS — LIGHT MODE BASE
+   Everything here is a CSS variable. Tailwind v4 exposes them as utility
+   classes automatically: --color-success → bg-success, text-success etc.
+   ──────────────────────────────────────────────────────────────────────────── */
+@theme {
+
+  /* ── 2a. Core UI Colors ────────────────────────────────────────────────────
+     Shadcn/ui compatible naming. All shadcn components inherit these.
+     ────────────────────────────────────────────────────────────────────────── */
+
+  --color-background:              oklch(1 0 0);
+  --color-foreground:              oklch(0.13 0 0);
+
+  --color-card:                    oklch(1 0 0);
+  --color-card-foreground:         oklch(0.13 0 0);
+
+  --color-popover:                 oklch(1 0 0);
+  --color-popover-foreground:      oklch(0.13 0 0);
+
+  /*
+   * PRIMARY — controls all CTA buttons, active states, focus rings.
+   * TO REBRAND: change these two lines only. Everything updates.
+   * Example blue brand:
+   *   --color-primary: oklch(0.55 0.22 255);   (blue)
+   *   --color-primary-foreground: oklch(1 0 0);
+   */
+  --color-primary:                 oklch(0.13 0 0);
+  --color-primary-foreground:      oklch(0.98 0 0);
+
+  --color-secondary:               oklch(0.96 0 0);
+  --color-secondary-foreground:    oklch(0.13 0 0);
+
+  --color-muted:                   oklch(0.96 0 0);
+  --color-muted-foreground:        oklch(0.50 0 0);
+
+  --color-accent:                  oklch(0.96 0 0);
+  --color-accent-foreground:       oklch(0.13 0 0);
+
+  --color-destructive:             oklch(0.577 0.245 27.325);
+  --color-destructive-foreground:  oklch(0.98 0 0);
+
+  --color-border:                  oklch(0.91 0 0);
+  --color-input:                   oklch(0.91 0 0);
+  --color-ring:                    oklch(0.13 0 0);
+
+
+  /* ── 2b. Semantic Status Colors ────────────────────────────────────────────
+     Replaces ad-hoc emerald-500 / orange-600 / red-500 scattered across files.
+     Usage: text-success  bg-success  bg-success-muted  text-success-muted
+     ────────────────────────────────────────────────────────────────────────── */
+
+  /* SUCCESS — stock in, confirmed, active, in stock, completed */
+  --color-success:                  oklch(0.65 0.18 145);
+  --color-success-foreground:       oklch(1 0 0);
+  --color-success-muted:            oklch(0.97 0.03 145);
+  --color-success-muted-foreground: oklch(0.40 0.12 145);
+
+  /* WARNING — low stock, pending, on hold, partial */
+  --color-warning:                  oklch(0.72 0.17 65);
+  --color-warning-foreground:       oklch(1 0 0);
+  --color-warning-muted:            oklch(0.97 0.03 80);
+  --color-warning-muted-foreground: oklch(0.45 0.14 65);
+
+  /* DANGER — out of stock, failed, rejected, cancelled */
+  --color-danger:                   oklch(0.577 0.245 27.325);
+  --color-danger-foreground:        oklch(1 0 0);
+  --color-danger-muted:             oklch(0.97 0.02 27);
+  --color-danger-muted-foreground:  oklch(0.45 0.18 27);
+
+  /* INFO — draft, scheduled, in transit, notes */
+  --color-info:                     oklch(0.62 0.17 245);
+  --color-info-foreground:          oklch(1 0 0);
+  --color-info-muted:               oklch(0.97 0.02 245);
+  --color-info-muted-foreground:    oklch(0.40 0.13 245);
+
+
+  /* ── 2c. Sidebar Colors ────────────────────────────────────────────────────
+     Separate from main surface so sidebar can have its own personality.
+     ────────────────────────────────────────────────────────────────────────── */
+  --color-sidebar:            oklch(0.97 0 0);
+  --color-sidebar-foreground: oklch(0.13 0 0);
+  --color-sidebar-border:     oklch(0.91 0 0);
+  --color-sidebar-accent:     oklch(0.93 0 0);
+  --color-sidebar-muted:      oklch(0.50 0 0);
+
+
+  /* ── 2d. Border Radius Scale ───────────────────────────────────────────────
+     USE ONLY THESE VALUES — never use arbitrary rounded-[Npx].
+     Change here → all component corners update everywhere.
+
+     xs   → tiny badges, inline chips
+     sm   → small tags, avatar notches
+     md   → inputs, small buttons, dropdowns
+     lg   → cards, panels, list items, standard buttons
+     xl   → modals, drawers, feature cards
+     2xl  → large POS cards, bottom sheets
+     3xl  → hero banners
+     full → pills, circular avatars, numeric badges
+     ────────────────────────────────────────────────────────────────────────── */
+  --radius-xs:   0.25rem;    /*  4px */
+  --radius-sm:   0.375rem;   /*  6px */
+  --radius-md:   0.5rem;     /*  8px */
+  --radius-lg:   0.75rem;    /* 12px */
+  --radius-xl:   1rem;       /* 16px */
+  --radius-2xl:  1.25rem;    /* 20px */
+  --radius-3xl:  1.5rem;     /* 24px */
+  --radius-full: 9999px;     /* pill / circle */
+
+
+  /* ── 2e. Typography Scale ──────────────────────────────────────────────────
+     Paired with Sora font (set in layout.tsx).
+     USE ONLY THESE — never use text-[10px] or text-[11px] inline.
+
+     xxs  → timestamps, watermarks, tiny metadata
+     xs   → labels, badges, table headers, captions
+     sm   → secondary body, table cells, form hints, helper text
+     base → primary body text (default)
+     md   → slightly emphasized body
+     lg   → section headings, card titles
+     xl   → page subheadings
+     2xl  → page headings (h1 on most pages)
+     3xl  → hero text, landing features
+     ────────────────────────────────────────────────────────────────────────── */
+  --font-size-xxs:  0.6875rem;    /* 11px */
+  --font-size-xs:   0.75rem;      /* 12px */
+  --font-size-sm:   0.875rem;     /* 14px */
+  --font-size-base: 1rem;         /* 16px */
+  --font-size-md:   1.0625rem;    /* 17px */
+  --font-size-lg:   1.125rem;     /* 18px */
+  --font-size-xl:   1.25rem;      /* 20px */
+  --font-size-2xl:  1.5rem;       /* 24px */
+  --font-size-3xl:  1.875rem;     /* 30px */
+
+  /* Line heights */
+  --line-height-none:    1;
+  --line-height-tight:   1.25;
+  --line-height-snug:    1.375;
+  --line-height-normal:  1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Font weights — use names not numbers */
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+
+  /* ── 2f. Spacing and Layout Tokens ────────────────────────────────────────
+     Named structural dimensions. Use these instead of w-[340px] etc.
+     Change here → all pages using these tokens update automatically.
+     ────────────────────────────────────────────────────────────────────────── */
+
+  /* App shell */
+  --height-header:             4rem;       /* 64px  — portal top navigation bar    */
+  --height-bottom-nav:         4rem;       /* 64px  — mobile bottom navigation     */
+  --width-sidebar:             16rem;      /* 256px — dashboard left sidebar       */
+  --width-sidebar-collapsed:   4rem;       /* 64px  — icon-only collapsed sidebar  */
+
+  /* POS / Stock Entry panels */
+  --width-cart-panel:          21.25rem;   /* 340px — cart panel default           */
+  --width-cart-panel-xl:       23.75rem;   /* 380px — cart panel at xl breakpoint  */
+
+  /* Content containers */
+  --width-content-sm:          36rem;      /* 576px  — narrow forms, modals        */
+  --width-content-md:          48rem;      /* 768px  — standard content            */
+  --width-content-lg:          64rem;      /* 1024px — wide content                */
+  --width-content-xl:          80rem;      /* 1280px — full width page             */
+
+  /* Form element heights — use these for all inputs, buttons, selects        */
+  --height-input-xs:           1.75rem;    /* 28px — compact table inputs          */
+  --height-input-sm:           2rem;       /* 32px — small buttons                 */
+  --height-input:              2.25rem;    /* 36px — standard (matches shadcn h-9) */
+  --height-input-lg:           2.75rem;    /* 44px — large/touch-friendly inputs   */
+  --height-input-xl:           3rem;       /* 48px — extra large (POS keypad)      */
+
+  /* Page padding */
+  --page-padding-x:            1rem;       /* 16px — mobile page horizontal padding  */
+  --page-padding-x-md:         1.5rem;     /* 24px — desktop page horizontal padding */
+  --page-padding-y:            1.25rem;    /* 20px — page vertical padding           */
+
+
+  /* ── 2g. Shadow Scale ──────────────────────────────────────────────────────
+     ────────────────────────────────────────────────────────────────────────── */
+  --shadow-xs:    0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow-sm:    0 1px 3px 0 oklch(0 0 0 / 0.10), 0 1px 2px -1px oklch(0 0 0 / 0.10);
+  --shadow-md:    0 4px 6px -1px oklch(0 0 0 / 0.10), 0 2px 4px -2px oklch(0 0 0 / 0.10);
+  --shadow-lg:    0 10px 15px -3px oklch(0 0 0 / 0.10), 0 4px 6px -4px oklch(0 0 0 / 0.10);
+  --shadow-xl:    0 20px 25px -5px oklch(0 0 0 / 0.10), 0 8px 10px -6px oklch(0 0 0 / 0.10);
+  --shadow-2xl:   0 25px 50px -12px oklch(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 oklch(0 0 0 / 0.06);
+
+
+  /* ── 2h. Animation Tokens ──────────────────────────────────────────────────
+     ────────────────────────────────────────────────────────────────────────── */
+  --duration-instant: 50ms;
+  --duration-fast:    100ms;    /* icon changes, checkboxes             */
+  --duration-normal:  150ms;    /* hover states, color transitions      */
+  --duration-slow:    250ms;    /* modals, drawers sliding in           */
+  --duration-slower:  350ms;    /* page transitions                     */
+
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:      cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:     cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);  /* slight overshoot */
+
+
+  /* ── 2i. Font Families ─────────────────────────────────────────────────────
+     --font-sans is loaded by next/font in layout.tsx.
+     TO CHANGE FONT: update layout.tsx Google font import + the first value here.
+     ────────────────────────────────────────────────────────────────────────── */
+  --font-sans: "Sora", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   3. DARK MODE OVERRIDES
+   Only override tokens that change in dark mode.
+   Radius, spacing, font, animation stay the same — don't repeat them.
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+
+  /* Core surfaces */
+  --color-background:              oklch(0.14 0 0);
+  --color-foreground:              oklch(0.95 0 0);
+  --color-card:                    oklch(0.17 0 0);
+  --color-card-foreground:         oklch(0.95 0 0);
+  --color-popover:                 oklch(0.14 0 0);
+  --color-popover-foreground:      oklch(0.95 0 0);
+
+  /* Primary inverts in dark */
+  --color-primary:                 oklch(0.95 0 0);
+  --color-primary-foreground:      oklch(0.13 0 0);
+
+  --color-secondary:               oklch(0.20 0 0);
+  --color-secondary-foreground:    oklch(0.95 0 0);
+  --color-muted:                   oklch(0.20 0 0);
+  --color-muted-foreground:        oklch(0.60 0 0);
+  --color-accent:                  oklch(0.20 0 0);
+  --color-accent-foreground:       oklch(0.95 0 0);
+
+  --color-destructive:             oklch(0.65 0.245 27.325);
+  --color-destructive-foreground:  oklch(0.98 0 0);
+
+  --color-border:                  oklch(0.25 0 0);
+  --color-input:                   oklch(0.25 0 0);
+  --color-ring:                    oklch(0.70 0 0);
+
+  /* Semantic — muted surfaces darken, text colors lighten */
+  --color-success:                  oklch(0.68 0.18 145);
+  --color-success-muted:            oklch(0.22 0.04 145);
+  --color-success-muted-foreground: oklch(0.75 0.14 145);
+
+  --color-warning:                  oklch(0.76 0.16 75);
+  --color-warning-muted:            oklch(0.22 0.04 75);
+  --color-warning-muted-foreground: oklch(0.80 0.14 75);
+
+  --color-danger:                   oklch(0.65 0.245 27.325);
+  --color-danger-muted:             oklch(0.22 0.04 27);
+  --color-danger-muted-foreground:  oklch(0.75 0.18 27);
+
+  --color-info:                     oklch(0.68 0.17 245);
+  --color-info-muted:               oklch(0.22 0.04 245);
+  --color-info-muted-foreground:    oklch(0.75 0.13 245);
+
+  /* Sidebar dark */
+  --color-sidebar:            oklch(0.12 0 0);
+  --color-sidebar-foreground: oklch(0.95 0 0);
+  --color-sidebar-border:     oklch(0.20 0 0);
+  --color-sidebar-accent:     oklch(0.18 0 0);
+  --color-sidebar-muted:      oklch(0.55 0 0);
+
+  /* Stronger shadows in dark (surface separation is harder without color) */
+  --shadow-sm:  0 1px 3px 0 oklch(0 0 0 / 0.30), 0 1px 2px -1px oklch(0 0 0 / 0.30);
+  --shadow-md:  0 4px 6px -1px oklch(0 0 0 / 0.35), 0 2px 4px -2px oklch(0 0 0 / 0.35);
+  --shadow-lg:  0 10px 15px -3px oklch(0 0 0 / 0.40), 0 4px 6px -4px oklch(0 0 0 / 0.40);
+  --shadow-xl:  0 20px 25px -5px oklch(0 0 0 / 0.45), 0 8px 10px -6px oklch(0 0 0 / 0.45);
+  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.60);
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   4. BASE LAYER — sensible HTML defaults
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    @apply border-border;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Sora-specific OpenType features */
+    font-feature-settings: "cv11", "ss01", "rlig" 1, "calt" 1;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Heading hierarchy — consistent across all pages */
+  h1 { font-size: var(--font-size-2xl);  font-weight: var(--font-weight-bold);     letter-spacing: -0.025em; line-height: var(--line-height-tight);  }
+  h2 { font-size: var(--font-size-xl);   font-weight: var(--font-weight-semibold); letter-spacing: -0.015em; line-height: var(--line-height-tight);  }
+  h3 { font-size: var(--font-size-lg);   font-weight: var(--font-weight-semibold); line-height: var(--line-height-snug);   }
+  h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); line-height: var(--line-height-snug);   }
+  h5 { font-size: var(--font-size-sm);   font-weight: var(--font-weight-semibold); }
+  h6 { font-size: var(--font-size-xs);   font-weight: var(--font-weight-semibold); }
+
+  /* Remove browser tap highlight */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Theme transition — color properties only, never transforms/opacity */
+  /* This gives the smooth light↔dark switch without breaking animations */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke, outline-color;
+    transition-duration: var(--duration-normal);
+    transition-timing-function: var(--ease-default);
+  }
+
+  /* Opt out of theme transitions where they'd break UX */
+  .no-transition,
+  .no-transition * {
+    transition: none !important;
+  }
+
+  /* Thin scrollbar — matches theme */
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--color-muted-foreground) 40%, transparent);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   5. UTILITY LAYER
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* ── Scrollbar ──────────────────────────────────────────────────────────── */
+  .scrollbar-hide                       { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar   { display: none; }
+
+  /* ── Text truncation ────────────────────────────────────────────────────── */
+  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .line-clamp-4 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+
+  /* ── Numeric rendering ──────────────────────────────────────────────────── */
+  /* Apply to prices, quantities, counters, timestamps */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .lining-nums  { font-variant-numeric: lining-nums;  }
+
+  /* ── Focus ring ─────────────────────────────────────────────────────────── */
+  .focus-ring {
+    @apply outline-none;
+    @apply focus-visible:ring-2 focus-visible:ring-ring;
+    @apply focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+
+  /* ── Layout helpers ─────────────────────────────────────────────────────── */
+  /* Content height minus header — use on main page content areas             */
+  .h-content        { height: calc(100vh - var(--height-header)); }
+  .h-content-mobile { height: calc(100vh - var(--height-header) - var(--height-bottom-nav)); }
+
+  /* Named panel widths — use instead of w-[340px], w-[380px] etc.           */
+  .w-cart-panel    { width: var(--width-cart-panel); }
+  .w-cart-panel-xl { width: var(--width-cart-panel-xl); }
+  .w-sidebar       { width: var(--width-sidebar); }
+
+  /* ── Semantic color utilities ───────────────────────────────────────────── */
+  /*
+   * USE THESE instead of text-emerald-600, text-orange-500 etc.
+   * They respect dark mode automatically and change when you update the token.
+   *
+   * Stock in / completed / active → text-success / bg-success-muted
+   * Low stock / pending           → text-warning / bg-warning-muted
+   * Out of stock / failed         → text-danger  / bg-danger-muted
+   * In transit / draft            → text-info    / bg-info-muted
+   */
+  .text-success { color: var(--color-success); }
+  .text-warning { color: var(--color-warning); }
+  .text-danger  { color: var(--color-danger);  }
+  .text-info    { color: var(--color-info);    }
+
+  .bg-success       { background-color: var(--color-success); }
+  .bg-warning       { background-color: var(--color-warning); }
+  .bg-danger        { background-color: var(--color-danger);  }
+  .bg-info          { background-color: var(--color-info);    }
+
+  .bg-success-muted { background-color: var(--color-success-muted); }
+  .bg-warning-muted { background-color: var(--color-warning-muted); }
+  .bg-danger-muted  { background-color: var(--color-danger-muted);  }
+  .bg-info-muted    { background-color: var(--color-info-muted);    }
+
+  /* Text on top of muted semantic backgrounds */
+  .text-success-muted { color: var(--color-success-muted-foreground); }
+  .text-warning-muted { color: var(--color-warning-muted-foreground); }
+  .text-danger-muted  { color: var(--color-danger-muted-foreground);  }
+  .text-info-muted    { color: var(--color-info-muted-foreground);    }
+
+  /* Foreground on solid semantic backgrounds (e.g. filled success badge) */
+  .text-success-foreground { color: var(--color-success-foreground); }
+  .text-warning-foreground { color: var(--color-warning-foreground); }
+  .text-danger-foreground  { color: var(--color-danger-foreground);  }
+  .text-info-foreground    { color: var(--color-info-foreground);    }
+
+  /* Border */
+  .border-success { border-color: var(--color-success); }
+  .border-warning { border-color: var(--color-warning); }
+  .border-danger  { border-color: var(--color-danger);  }
+  .border-info    { border-color: var(--color-info);    }
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   6. PRINT STYLES — INTERIM
+   Full template builder (multi-format, user-configurable paper sizes, multiple
+   templates) will replace this section when billing module is built.
+   DO NOT build complex printing logic on top of this.
+   ──────────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything by default */
+  body > * {
+    display: none !important;
+  }
+
+  /* Only .print-target renders */
+  .print-target {
+    display: block !important;
+  }
+
+  /* Clean output — no theme colors, no shadows */
+  .print-target,
+  .print-target * {
+    color: black !important;
+    background: white !important;
+    border-color: #d1d5db !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Standard thermal receipt — override per-template when builder is ready */
+  @page {
+    size: 80mm auto;
+    margin: 6mm;
+  }
+}
+
+/* ── App loader progress bar ─────────────────────────────────── */
+@keyframes progress-bar {
+  0%   { transform: translateX(-100%); width: 60%; }
+  60%  { transform: translateX(60%);   width: 80%; }
+  100% { transform: translateX(120%);  width: 100%; }
+}
+.animate-progress-bar {
+  animation: progress-bar 1.6s ease-in-out infinite;
+}
+
+/* ── Interactive state utilities ─────────────────────────────────────────────
+   Use these instead of hardcoding bg-foreground/text-background everywhere.
+   Change theme here → updates every toggle, pill, tab across the whole app.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Segmented control / tab switcher */
+.tab-active   { @apply bg-foreground text-background; }
+.tab-inactive { @apply text-muted-foreground hover:text-foreground hover:bg-muted transition-colors; }
+
+/* Filter pill (status filters, type selectors) */
+.pill-active   { @apply bg-foreground text-background; }
+.pill-inactive { @apply bg-muted text-muted-foreground hover:text-foreground transition-colors; }
+
+/* View mode toggle (grid/list/table switchers) */
+.view-active   { @apply bg-foreground text-background; }
+.view-inactive { @apply text-muted-foreground hover:text-foreground hover:bg-muted transition-colors; }
+
+/* Nav item active/inactive (sidebar, bottom nav) */
+.nav-active    { @apply bg-foreground text-background font-medium; }
+.nav-inactive  { @apply text-muted-foreground hover:text-foreground hover:bg-muted transition-colors; }

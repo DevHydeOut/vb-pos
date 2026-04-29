@@ -1,0 +1,1072 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ============================================================
+// BETTER AUTH MODELS — DO NOT MODIFY
+// These are managed by Better Auth for Master User Google OAuth
+// ============================================================
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+
+  masterProfile MasterProfile?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+// ============================================================
+// MASTER USER EXTENSION
+// One-to-one with Better Auth User
+// ============================================================
+
+model MasterProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique           // Better Auth User.id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId         String   @unique           // Sub-users use this to login (e.g. "ACC-123456")
+  activeSessionSiteId String?                    // Tracks which site master is currently viewing
+
+  // Business identity
+  businessName          String?
+  businessLogoUrl       String?
+  taxRegistrationNumber String?
+
+  // Locale
+  countryCode           String?
+  currencyCode          String   @default("INR")
+  currencySymbol        String   @default("₹")
+  phoneCode             String   @default("+91")
+  timezone              String   @default("Asia/Kolkata")
+  dateFormat            String   @default("DD/MM/YYYY")
+
+  // Contact
+  phone                 String?
+
+  sites               Site[]
+  subUsers            SubUser[]
+  staffSessions       StaffSession[]
+  categoryTypes       CategoryType[]
+  categories          Category[]
+  taxGroups           TaxGroup[]
+  coupons             Coupon[]
+  products            Product[]
+  customers           Customer[]
+  loyalty             LoyaltyProgram?
+  loyaltyRewards      LoyaltyReward[]
+  stockMovements      StockMovement[]
+  loyaltyTx           LoyaltyTransaction[]
+  stockTransfers      StockTransfer[]
+  stockReceives       StockReceive[]
+  notifications       Notification[]
+
+  profileComplete       Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([accountId])
+  @@map("master_profile")
+}
+
+// ============================================================
+// SITES
+// A master user can create multiple sites
+// ============================================================
+
+model Site {
+  id              String        @id @default(cuid())
+  name            String
+  taxNumber       String?
+  isActive        Boolean       @default(true)   
+
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+ // Contact
+  address         String?
+  phone           String?
+
+  // Locale — inherited from master, overridable
+  currencyCode      String   @default("INR")
+  currencySymbol    String   @default("₹")
+  phoneCode         String   @default("+91")
+  timezone          String   @default("Asia/Kolkata")
+  dateFormat        String   @default("DD/MM/YYYY")
+  countryOverridden Boolean  @default(false)
+
+  // Tax
+  taxInclusive          Boolean  @default(false)
+  taxRegistrationNumber String?
+
+  // Branding
+  logoUrl         String?
+
+  // Receipt
+  receiptFooter   String?
+
+  // Language
+  language        String   @default("en")
+
+  subUserSites    SubUserSite[]
+  auditLogs       AuditLog[]
+  categories      Category[]
+  taxGroups           TaxGroup[]
+  coupons             Coupon[]
+  products        Product[]
+  loyaltyOverride  LoyaltyProgramSite?
+  loyaltyRewards   LoyaltyReward[]
+  earnRules        LoyaltyEarnRule[]
+  stockMovements   StockMovement[]
+  loyaltyTx        LoyaltyTransaction[]
+  transfersOut     StockTransfer[] @relation("TransfersOut")
+  transfersIn      StockTransfer[] @relation("TransfersIn")
+  stockReceives    StockReceive[]
+  notifications   Notification[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([masterProfileId])
+  @@map("site")
+}
+
+// ============================================================
+// MODULES & PAGES
+// Seeded once — represents your app's structure
+// Used for sub-user permission assignment
+// ============================================================
+
+model Module {
+  id          String       @id @default(cuid())
+  key         String       @unique             // e.g. "inventory", "billing", "patients"
+  label       String                           // e.g. "Inventory Management"
+  sortOrder   Int          @default(0)
+
+  pages       Page[]
+  permissions Permission[]
+
+  @@map("module")
+}
+
+model Page {
+  id          String       @id @default(cuid())
+  key         String       @unique             // e.g. "inventory.products", "billing.invoices"
+  label       String                           // e.g. "Products", "Invoices"
+  sortOrder   Int          @default(0)
+
+  moduleId    String
+  module      Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  permissions Permission[]
+
+  @@index([moduleId])
+  @@map("page")
+}
+
+// ============================================================
+// SUB USERS
+// Belong to a master user, login with accountId + username + password
+// ============================================================
+
+model SubUser {
+  id              String        @id @default(cuid())
+  username        String
+  password        String
+  name            String?
+  phone           String?
+  avatarUrl       String?
+  language        String        @default("en")
+  isActive        Boolean       @default(true)
+
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  sites           SubUserSite[]
+  auditLogs       AuditLog[]
+  staffSessions    StaffSession[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([masterProfileId, username])   
+  @@index([masterProfileId])
+  @@map("sub_user")
+}
+
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  key         String   @unique  // "ip::accountId::username"
+  attempts    Int      @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@map("login_attempt")
+}
+
+// ============================================================
+// SUB USER <-> SITE
+// Which sites a sub-user has access to
+// ============================================================
+
+model SubUserSite {
+  id          String   @id @default(cuid())
+
+  subUserId   String
+  subUser     SubUser  @relation(fields: [subUserId], references: [id], onDelete: Cascade)
+
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  isDefault   Boolean  @default(false)             // First site they land on after login
+
+  permissions Permission[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([subUserId, siteId])
+  @@index([subUserId])
+  @@index([siteId])
+  @@map("sub_user_site")
+}
+
+// ============================================================
+// PERMISSIONS
+// Presence of a row = access granted (no action-level flags)
+// Module-level = access to all pages in that module
+// Page-level = access to that specific page only (overrides module)
+// ============================================================
+
+model Permission {
+  id            String      @id @default(cuid())
+
+  subUserSiteId String
+  subUserSite   SubUserSite @relation(fields: [subUserSiteId], references: [id], onDelete: Cascade)
+
+  moduleId      String?
+  module        Module?     @relation(fields: [moduleId], references: [id])
+
+  pageId        String?
+  page          Page?       @relation(fields: [pageId], references: [id])
+
+  @@unique([subUserSiteId, moduleId, pageId])
+  @@index([subUserSiteId])
+  @@map("permission")
+}
+
+// ============================================================
+// AUDIT LOG
+// Tracks every action by both master users and sub-users
+// Write as fire-and-forget — never await in critical path
+// ============================================================
+
+model AuditLog {
+  id            String   @id @default(cuid())
+
+  // One of these will be set depending on who did the action
+  subUserId     String?
+  subUser       SubUser? @relation(fields: [subUserId], references: [id])
+  masterUserId  String?                             // Better Auth User.id
+
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id])
+
+  action        String                              // e.g. SALE_CREATED, BILL_PRINTED, PRODUCT_SOFT_DELETED
+  module        String                              // e.g. "billing", "inventory"
+  recordId      String?                             // id of the affected record
+  recordType    String?                             // e.g. "Sale", "Product"
+  metadata      Json?                               // before/after values, extra context
+  ipAddress     String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([siteId])
+  @@index([subUserId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+
+model StaffSession {
+  id              String        @id @default(cuid())
+  token           String        @unique
+  subUserId       String
+  subUser         SubUser       @relation(fields: [subUserId], references: [id], onDelete: Cascade)
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  createdAt       DateTime      @default(now())
+
+  @@index([token])
+  @@index([subUserId])
+  @@map("staff_session")
+}
+
+model CategoryType {
+  id              String     @id @default(cuid())
+  name            String
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  categories      Category[]
+
+  @@unique([masterProfileId, name])
+  @@map("category_type")
+}
+
+model Category {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  color           String        @default("#6366f1")  // hex color
+  icon            String        @default("tag")      // lucide icon name
+  isGlobal        Boolean       @default(false)      // true = master global
+  isActive        Boolean       @default(true)
+  deletedAt       DateTime?
+  deletedBy       String?       // subUserId who soft deleted
+
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  typeId          String?
+  type            CategoryType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+
+  // null = global category, set = site-specific category
+  siteId          String?
+  site            Site?         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  products        Product[]
+  earnRules        LoyaltyEarnRule[]
+
+  @@index([masterProfileId, isGlobal, deletedAt])
+  @@index([siteId, deletedAt])
+  @@map("category")
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// TAX
+// ─────────────────────────────────────────────────────────────
+
+model TaxGroup {
+  id              String        @id @default(cuid())
+  name            String                              // "GST 18%", "VAT", "Sales Tax"
+  rate            Float                               // 18.0  (percent)
+  description     String?                             // optional note
+  isDefault       Boolean       @default(false)       // auto-apply if no tax chosen
+  isActive        Boolean       @default(true)
+  isGlobal        Boolean       @default(false)       // true = pushed from master
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  siteId          String?
+  site            Site?         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  deletedAt       DateTime?
+
+  products        Product[]
+
+  @@index([masterProfileId, isGlobal, deletedAt])
+  @@index([siteId, deletedAt])
+  @@map("tax_group")
+}
+
+// ─────────────────────────────────────────────────────────────
+// COUPON
+// ─────────────────────────────────────────────────────────────
+
+// How the discount amount is calculated
+enum DiscountType {
+  PERCENTAGE  // e.g. 10%
+  FIXED       // e.g. ₹100 flat
+}
+
+// What the discount applies to
+enum DiscountApplyOn {
+  SUBTOTAL_TAX_RECALC  // discount item price, tax recalculates on new price
+  SUBTOTAL_TAX_FIXED   // discount item price, tax stays on original price
+  TOTAL                // discount the whole bill including tax
+}
+
+model Coupon {
+  id              String           @id @default(cuid())
+  code            String                               // "SAVE10" — what cashier types
+  description     String?                              // internal note
+  discountType    DiscountType                         // PERCENTAGE | FIXED
+  discountValue   Float                                // 10 (%) or 100 (fixed)
+  capAmount       Float?                               // max discount e.g. ₹200 cap on 10%
+  applyOn         DiscountApplyOn                      // which scenario
+  minOrderValue   Float?                               // minimum cart value to apply
+  expiresAt       DateTime?                            // null = never expires
+  isActive        Boolean          @default(true)
+  isGlobal        Boolean          @default(false)     // true = pushed from master
+  masterProfileId String
+  masterProfile   MasterProfile    @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  siteId          String?
+  site            Site?            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  deletedAt       DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@unique([masterProfileId, siteId, code])
+  @@index([masterProfileId, isGlobal, deletedAt])
+  @@index([siteId, deletedAt])
+  @@map("coupon")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCT
+// ─────────────────────────────────────────────────────────────
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  sku             String?                           // auto-generated or manual
+  barcode         String?                           // EAN-13, QR, Code128, UPC-A
+
+  // Relations
+  categoryId        String?
+  category          Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taxGroupId        String?
+  taxGroup          TaxGroup?   @relation(fields: [taxGroupId], references: [id], onDelete: SetNull)
+
+  // Pricing — on product when no variants
+  costPrice         Float?                            // purchase/cost price
+  sellingPrice      Float?                            // customer-facing price
+
+  // Stock — on product when no variants
+  stock             Int         @default(0)
+  lowStockThreshold Int?                            // alert when stock <= this
+
+  // Variants
+  hasVariants       Boolean     @default(false)
+  variants          ProductVariant[]
+
+  // Images
+  images            ProductImage[]
+  
+  stockMovements    StockMovement[]
+  loyaltyReward     LoyaltyReward[]
+  earnRules         LoyaltyEarnRule[]
+  transferItems     StockTransferItem[]
+  receiveItems      StockReceiveItem[]
+
+  // Status — isActive manually set; outOfStock derived from stock
+  isActive        Boolean     @default(true)
+
+  // Multi-site pattern (same as Category/Coupon)
+  isGlobal        Boolean     @default(false)       // true = pushed from master
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  siteId          String?
+  site            Site?       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([masterProfileId, isGlobal, deletedAt])
+  @@index([siteId, deletedAt])
+  @@index([barcode])                                // fast barcode lookup at checkout
+  @@index([sku])
+  @@map("product")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCT VARIANT
+// Only used when Product.hasVariants = true
+// Stock and pricing live here, not on the parent product
+// ─────────────────────────────────────────────────────────────
+
+model ProductVariant {
+  id                String    @id @default(cuid())
+  name              String                          // "Small / Red", "250ml", "XL"
+  sku               String?                         // variant-level SKU override
+  barcode           String?                         // variant-level barcode override
+
+  costPrice         Float?
+  sellingPrice      Float?
+
+  stock             Int       @default(0)
+  lowStockThreshold Int?
+
+  isActive          Boolean   @default(true)
+
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  stockMovements   StockMovement[]
+  transferItems    StockTransferItem[]
+  receiveItems     StockReceiveItem[]
+  
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([barcode])
+  @@index([sku])
+  @@map("product_variant")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCT IMAGE
+// ─────────────────────────────────────────────────────────────
+
+model ProductImage {
+  id          String   @id @default(cuid())
+  url         String                               // Supabase Storage public URL
+  storagePath String                               // path inside bucket for deletion
+  sortOrder   Int      @default(0)                 // drag-to-reorder
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_image")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum StockMovementType {
+  SALE              // stock reduced by a sale
+  RETURN            // stock increased by a return
+  ADJUSTMENT        // manual correction
+  TRANSFER_IN       // received from another site
+  TRANSFER_OUT      // sent to another site
+  PURCHASE          // received from supplier
+  DAMAGE            // written off as damaged
+  OPENING           // initial stock entry
+}
+
+enum LoyaltyRewardType {
+  FREE_PRODUCT      // redeem for a specific product
+  FIXED_DISCOUNT    // e.g. $10 off next purchase
+  PERCENT_DISCOUNT  // e.g. 15% off next purchase
+  CUSTOM_VOUCHER    // custom — staff handles manually
+}
+
+enum LoyaltyTxType {
+  EARN              // points awarded
+  REDEEM            // points used
+  EXPIRE            // points expired
+  ADJUST            // manual correction by admin
+  BONUS             // bonus from product/category rule
+}
+
+// ─────────────────────────────────────────────────────────────
+// 1. STOCK MOVEMENT
+// Audit trail for every stock change — never lose history
+// ─────────────────────────────────────────────────────────────
+
+model StockMovement {
+  id              String            @id @default(cuid())
+  type            StockMovementType
+  quantity        Int               // positive = stock in, negative = stock out
+  quantityBefore  Int               // stock level before this movement
+  quantityAfter   Int               // stock level after this movement
+  note            String?           // optional reason / reference
+
+  // What changed
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id])
+  variantId       String?
+  variant         ProductVariant?   @relation(fields: [variantId], references: [id])
+
+  // Where + who
+  siteId          String?
+  site            Site?             @relation(fields: [siteId], references: [id])
+  masterProfileId String
+  masterProfile   MasterProfile     @relation(fields: [masterProfileId], references: [id])
+
+  // Linked to a sale (populated when type = SALE | RETURN)
+  orderId         String?
+  // order         Order?            @relation(...) — uncomment when Order model added
+
+  createdAt       DateTime          @default(now())
+  createdBy       String?           // staff/master user id who triggered it
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([siteId, createdAt])
+  @@index([masterProfileId, createdAt])
+  @@map("stock_movement")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 2. CUSTOMER
+// Master-level — one customer can shop at any site
+// Identified by phone number at checkout
+// ─────────────────────────────────────────────────────────────
+
+model Customer {
+  id              String    @id @default(cuid())
+  name            String
+  phone           String    // primary identifier at checkout
+  email           String?
+  dateOfBirth     DateTime? // optional — useful for birthday bonuses later
+  notes           String?
+
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id])
+
+  // Loyalty
+  loyalty         CustomerLoyalty?
+  loyaltyTx       LoyaltyTransaction[]
+
+  // Orders (linked when Order model is added)
+  // orders       Order[]
+
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([masterProfileId, phone]) // phone unique per business
+  @@index([masterProfileId, phone])
+  @@index([masterProfileId, deletedAt])
+  @@map("customer")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 3. LOYALTY PROGRAM
+// ─────────────────────────────────────────────────────────────
+
+// ── 3a. Master-level program settings ────────────────────────
+// One per master account — global on/off + earn rate
+model LoyaltyProgram {
+  id              String   @id @default(cuid())
+
+  // Master toggle — if false, loyalty is off for the entire business
+  isEnabled       Boolean  @default(false)
+
+  // Base earn rule: points per currency unit spent
+  // e.g. pointsPerUnit=1, unitValue=1.00 → 1 point per $1
+  // e.g. pointsPerUnit=10, unitValue=1.00 → 10 points per $1
+  pointsPerUnit   Int      @default(1)  // points awarded
+  unitValue       Float    @default(1)  // currency amount that earns pointsPerUnit
+
+  // Points expiry — null means points never expire
+  expiryDays      Int?
+
+  // Display name for the points currency (e.g. "Stars", "Points", "Coins")
+  pointsName      String   @default("Points")
+
+  masterProfileId String   @unique
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id])
+
+  siteOverrides   LoyaltyProgramSite[]
+  rewards         LoyaltyReward[]
+  earnRules       LoyaltyEarnRule[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("loyalty_program")
+}
+
+// ── 3b. Per-site override ─────────────────────────────────────
+// Each site can opt out even if master has loyalty enabled
+// Or override the earn rate for that site
+model LoyaltyProgramSite {
+  id               String  @id @default(cuid())
+
+  // Site-level toggle (null = inherit from master)
+  isEnabled        Boolean @default(true)
+
+  // Optional site-level earn rate override (null = use master rate)
+  pointsPerUnit    Int?
+  unitValue        Float?
+
+  loyaltyProgramId String
+  loyaltyProgram   LoyaltyProgram @relation(fields: [loyaltyProgramId], references: [id])
+
+  siteId           String  @unique
+  site             Site    @relation(fields: [siteId], references: [id])
+
+  @@map("loyalty_program_site")
+}
+
+// ── 3c. Earn rule — bonus points for product/category ─────────
+// e.g. "Buying anything from Electronics gives 3x points"
+// e.g. "Buying Product X gives +50 bonus points flat"
+model LoyaltyEarnRule {
+  id               String   @id @default(cuid())
+
+  name             String   // e.g. "Electronics Double Points"
+  description      String?
+
+  // Target — one of these is set, not both
+  productId        String?
+  product          Product?  @relation(fields: [productId], references: [id])
+  categoryId       String?
+  category         Category? @relation(fields: [categoryId], references: [id])
+
+  // Bonus type
+  // MULTIPLIER: points × multiplier (e.g. 2.0 = double points)
+  // FLAT: add fixed bonus points regardless of spend
+  bonusType        String   @default("MULTIPLIER") // "MULTIPLIER" | "FLAT"
+  bonusValue       Float    @default(2)            // multiplier or flat points
+
+  isActive         Boolean  @default(true)
+
+  loyaltyProgramId String
+  loyaltyProgram   LoyaltyProgram @relation(fields: [loyaltyProgramId], references: [id])
+
+  // Can be global or site-specific (null siteId = applies to all sites)
+  siteId           String?
+  site             Site?    @relation(fields: [siteId], references: [id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  @@index([productId])
+  @@index([categoryId])
+  @@index([loyaltyProgramId])
+  @@map("loyalty_earn_rule")
+}
+
+// ── 3d. Loyalty Reward — what customers can redeem points for ──
+// Admin-created. Can be global (pushed to sites) or site-specific.
+model LoyaltyReward {
+  id               String            @id @default(cuid())
+  name             String            // e.g. "Free Coffee", "$10 Off"
+  description      String?
+  type             LoyaltyRewardType
+
+  // Cost to redeem
+  pointsCost       Int               // how many points needed
+
+  // Reward value — interpretation depends on type:
+  // FREE_PRODUCT    → productId below is the product
+  // FIXED_DISCOUNT  → discountValue = amount off (in master currency)
+  // PERCENT_DISCOUNT→ discountValue = percentage (e.g. 15 = 15%)
+  // CUSTOM_VOUCHER  → voucherNote = instruction for staff
+  discountValue    Float?
+  productId        String?
+  product          Product?          @relation(fields: [productId], references: [id])
+  voucherNote      String?           // for CUSTOM_VOUCHER type
+
+  // Availability
+  isActive         Boolean           @default(true)
+  isGlobal         Boolean           @default(true) // true = available at all sites
+  siteId           String?           // null if global
+  site             Site?             @relation(fields: [siteId], references: [id])
+
+  // Stock limit — null = unlimited
+  maxRedemptions   Int?
+  redemptionCount  Int               @default(0)
+
+  // Expiry date for the reward itself (not customer points)
+  expiresAt        DateTime?
+
+  loyaltyProgramId String
+  loyaltyProgram   LoyaltyProgram    @relation(fields: [loyaltyProgramId], references: [id])
+
+  masterProfileId  String
+  masterProfile    MasterProfile     @relation(fields: [masterProfileId], references: [id])
+
+  transactions     LoyaltyTransaction[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  @@index([loyaltyProgramId, isActive])
+  @@index([siteId, isActive])
+  @@map("loyalty_reward")
+}
+
+// ── 3e. Customer Loyalty Balance ──────────────────────────────
+// One per customer — current points + lifetime total
+model CustomerLoyalty {
+  id               String   @id @default(cuid())
+  currentPoints    Int      @default(0)   // spendable balance
+  lifetimePoints   Int      @default(0)   // never decrements — for tier tracking later
+  lifetimeSpend    Float    @default(0)   // total spend in currency — for tier tracking
+
+  customerId       String   @unique
+  customer         Customer @relation(fields: [customerId], references: [id])
+
+  updatedAt        DateTime @updatedAt
+
+  @@map("customer_loyalty")
+}
+
+// ── 3f. Loyalty Transaction — full audit trail ────────────────
+// Every point earn/redeem/expire/adjust is recorded here
+model LoyaltyTransaction {
+  id               String         @id @default(cuid())
+  type             LoyaltyTxType
+
+  // Points: positive = earned, negative = redeemed/expired
+  points           Int
+  balanceBefore    Int            // for audit trail
+  balanceAfter     Int
+
+  // Context
+  note             String?
+
+  // Linked entities
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+
+  // Which reward was redeemed (for REDEEM type)
+  rewardId         String?
+  reward           LoyaltyReward? @relation(fields: [rewardId], references: [id])
+
+  // Which order triggered this (populated when Order model added)
+  orderId          String?
+
+  // Which site the transaction happened at
+  siteId           String?
+  site             Site?          @relation(fields: [siteId], references: [id])
+
+  masterProfileId  String
+  masterProfile    MasterProfile  @relation(fields: [masterProfileId], references: [id])
+
+  createdAt        DateTime       @default(now())
+  createdBy        String?        // staff/master id
+
+  @@index([customerId, createdAt])
+  @@index([masterProfileId, createdAt])
+  @@index([siteId, createdAt])
+  @@map("loyalty_transaction")
+}
+
+enum TransferStatus {
+  PENDING    // sent, awaiting destination acceptance
+  ACCEPTED   // destination confirmed — stock moved
+  REJECTED   // destination rejected — no stock change
+  CANCELLED  // sender cancelled before acceptance
+}
+
+// ── StockTransfer ─────────────────────────────────────────────
+// Header for a stock transfer between two sites.
+// Two-step: sender creates (PENDING), receiver accepts/rejects.
+// Stock only moves on ACCEPTED.
+model StockTransfer {
+  id            String         @id @default(cuid())
+  referenceNo   String                               // "TRF-20240306-001" auto-generated
+
+  status        TransferStatus @default(PENDING)
+
+  fromSiteId    String
+  fromSite      Site           @relation("TransfersOut", fields: [fromSiteId], references: [id])
+
+  toSiteId      String
+  toSite        Site           @relation("TransfersIn", fields: [toSiteId], references: [id])
+
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  note          String?        // optional dispatch note / supplier ref
+  generateBill  Boolean        @default(false)
+
+  // Actors
+  createdBy     String?        // subUserId or masterProfileId
+  acceptedBy    String?
+  rejectedBy    String?
+  cancelledBy   String?
+
+  // Timestamps
+  acceptedAt    DateTime?
+  rejectedAt    DateTime?
+  cancelledAt   DateTime?
+  rejectedNote  String?
+
+  items         StockTransferItem[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([fromSiteId, status])
+  @@index([toSiteId, status])
+  @@index([masterProfileId, createdAt])
+  @@map("stock_transfer")
+}
+
+// ── StockTransferItem ─────────────────────────────────────────
+model StockTransferItem {
+  id                String         @id @default(cuid())
+
+  transferId        String
+  transfer          StockTransfer  @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id])
+
+  variantId         String?
+  variant           ProductVariant? @relation(fields: [variantId], references: [id])
+
+  quantitySent      Int            // declared by sender
+  quantityReceived  Int?           // confirmed by receiver (can differ — partial receipt)
+
+  costPrice         Float?         // purchase cost — used for bill generation
+
+  @@index([transferId])
+  @@index([productId])
+  @@map("stock_transfer_item")
+}
+
+// ── StockReceive ──────────────────────────────────────────────
+// Header for a POS-style stock receiving session.
+// Scan/add products → save all as PURCHASE or OPENING movements.
+// orderId on StockMovement links back to this record.
+model StockReceive {
+  id              String            @id @default(cuid())
+  referenceNo     String                               // "GRN-20240306-001" auto-generated
+  supplierName    String?                              // optional supplier name
+  note            String?
+
+  movementType    StockMovementType @default(PURCHASE) // PURCHASE or OPENING only
+
+  generateBill    Boolean           @default(false)
+
+  siteId          String
+  site            Site              @relation(fields: [siteId], references: [id])
+
+  masterProfileId String
+  masterProfile   MasterProfile     @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  items           StockReceiveItem[]
+
+  createdBy       String?
+  createdAt       DateTime          @default(now())
+
+  @@index([siteId, createdAt])
+  @@index([masterProfileId, createdAt])
+  @@map("stock_receive")
+}
+
+// ── StockReceiveItem ──────────────────────────────────────────
+model StockReceiveItem {
+  id          String        @id @default(cuid())
+
+  receiveId   String
+  receive     StockReceive  @relation(fields: [receiveId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id])
+
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+
+  quantity    Int
+  costPrice   Float?        // purchase price per unit — for bill
+
+  @@index([receiveId])
+  @@index([productId])
+  @@map("stock_receive_item")
+}
+
+
+// ── NEW ENUM — add after TransferStatus ──────────────────────
+
+enum NotificationType {
+  TRANSFER_INCOMING   // someone sent stock to your site
+  TRANSFER_ACCEPTED   // your transfer was accepted
+  TRANSFER_REJECTED   // your transfer was rejected
+  TRANSFER_CANCELLED  // a transfer was cancelled
+  LOW_STOCK           // product below threshold
+  SYSTEM              // general system message
+}
+
+// ── NEW MODEL — add after StockReceiveItem ───────────────────
+
+model Notification {
+  id              String           @id @default(cuid())
+  type            NotificationType
+  title           String
+  message         String
+  isRead          Boolean          @default(false)
+
+  // Who receives this notification — the destination site
+  siteId          String
+  site            Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  masterProfileId String
+  masterProfile   MasterProfile    @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  // Deep link — where to navigate when clicked
+  actionUrl       String?          // e.g. /portal/[siteId]/inventory/transfers/[id]
+
+  // Context — which record triggered this
+  referenceId     String?          // e.g. StockTransfer.id
+  referenceType   String?          // e.g. "StockTransfer"
+
+  createdAt       DateTime         @default(now())
+  readAt          DateTime?
+
+  @@index([siteId, isRead])
+  @@index([masterProfileId, createdAt])
+  @@map("notification")
+}

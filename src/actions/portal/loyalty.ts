@@ -43,8 +43,8 @@ function revalidateLoyalty(siteId?: string | null) {
   revalidatePath("/dashboard/settings/loyalty");
   revalidatePath("/dashboard/manage/loyalty");
   if (siteId) {
-    revalidatePath(`/portal/${siteId}/settings/loyalty`);
-    revalidatePath(`/portal/${siteId}/customers`);
+    revalidatePath(`/portal/${siteId}/loyalty/rewards`);
+    revalidatePath(`/portal/${siteId}/loyalty/customers`);
   }
 }
 
@@ -508,7 +508,14 @@ export async function lookupCustomerByPhoneAction(
       (r) => r.pointsCost <= currentPoints &&
              (r.maxRedemptions == null || r.redemptionCount < r.maxRedemptions) &&
              (r.expiresAt == null || r.expiresAt > new Date())
-    ) ?? [];
+    ).map((reward) => ({
+      id: reward.id,
+      name: reward.name,
+      pointsCost: reward.pointsCost,
+      type: reward.type,
+      discountValue: reward.discountValue,
+      productId: reward.productId,
+    })) ?? [];
 
     return {
       success: true  as const,
@@ -570,7 +577,7 @@ export async function adjustCustomerPointsAction(
       }),
     ]);
 
-    revalidatePath(siteId ? `/portal/${siteId}/customers/${customerId}` : `/dashboard/manage/customers/${customerId}`);
+    revalidatePath(siteId ? `/portal/${siteId}/loyalty/customers` : "/dashboard/manage/loyalty");
     return { success: true };
   } catch {
     return { success: false, error: "Failed to adjust points" };

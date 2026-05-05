@@ -32,7 +32,7 @@ async function resolveIdentity(siteId: string | null) {
 function revalidateStock(siteId: string | null, productId?: string) {
   if (siteId) {
     revalidatePath(`/portal/${siteId}/inventory/stock`);
-    revalidatePath(`/portal/${siteId}/inventory/history`);
+    revalidatePath(`/portal/${siteId}/inventory/stock`);
     if (productId) {
       revalidatePath(`/portal/${siteId}/inventory/products/${productId}`);
     }

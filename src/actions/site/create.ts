@@ -30,8 +30,8 @@ export async function createSiteAction(
   }
 
   // 3. Get master profile
-  const masterProfile = await prisma.masterProfile.findUnique({
-    where: { userId: session.user.id },
+  const masterProfile = await prisma.masterProfile.findFirst({
+    orderBy: { createdAt: "asc" },
   });
   if (!masterProfile) return { success: false, error: "Account not found" };
 

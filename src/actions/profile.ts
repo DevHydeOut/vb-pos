@@ -177,7 +177,7 @@ export async function updateSiteSettingsAction(
       },
     });
 
-    revalidatePath(`/portal/${siteId}/settings`);
+    revalidatePath(`/portal/${siteId}/profile`);
     return { success: true };
   } catch (e) {
     return { success: false, error: "Failed to update site settings" };
@@ -201,7 +201,7 @@ export async function resetSiteLocaleAction(siteId: string): Promise<ActionResul
       },
     });
 
-    revalidatePath(`/portal/${siteId}/settings`);
+    revalidatePath(`/portal/${siteId}/profile`);
     return { success: true };
   } catch (e) {
     return { success: false, error: "Failed to reset locale" };

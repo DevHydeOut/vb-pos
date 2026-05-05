@@ -1,18 +1,16 @@
-// src/app/portal/[siteId]/customers/loyalty/page.tsx
-
-import { redirect }              from "next/navigation";
-import { getMasterProfile }      from "@/data/master";
-import { getStaffSession }       from "@/actions/auth/staff";
-import { prisma }                from "@/lib/prisma";
-import { ROUTES }                from "@/routes";
-import { CustomerLoyaltyClient } from "@/components/portal/customers/customer-loyalty-client";
+import { redirect } from "next/navigation";
+import { getMasterProfile } from "@/data/master";
+import { getStaffSession } from "@/actions/auth/staff";
+import { prisma } from "@/lib/prisma";
+import { ROUTES } from "@/routes";
+import { CustomerLoyaltyClient } from "@/components/portal/loyalty/customer-loyalty-client";
 
 export default async function CustomerLoyaltyPage({
   params,
 }: {
   params: Promise<{ siteId: string }>;
 }) {
-  const { siteId }   = await params;
+  const { siteId } = await params;
   const masterResult = await getMasterProfile().catch(() => null);
   const staffSession = await getStaffSession().catch(() => null);
   if (!masterResult && !staffSession) redirect(ROUTES.auth.login);
@@ -23,13 +21,13 @@ export default async function CustomerLoyaltyPage({
 
   const [customers, loyaltyProgram] = await Promise.all([
     prisma.customer.findMany({
-      where:   { masterProfileId, deletedAt: null, isActive: true },
+      where: { masterProfileId, deletedAt: null, isActive: true },
       include: { loyalty: true },
       orderBy: { loyalty: { currentPoints: "desc" } },
-      take:    100,
+      take: 100,
     }),
     prisma.loyaltyProgram.findUnique({
-      where:  { masterProfileId },
+      where: { masterProfileId },
       select: { isEnabled: true, pointsName: true },
     }),
   ]);
@@ -37,13 +35,13 @@ export default async function CustomerLoyaltyPage({
   return (
     <main className="px-4 py-8 max-w-3xl mx-auto">
       <CustomerLoyaltyClient
-        customers={customers.map((c) => ({
-          id:             c.id,
-          name:           c.name,
-          phone:          c.phone,
-          currentPoints:  c.loyalty?.currentPoints  ?? 0,
-          lifetimePoints: c.loyalty?.lifetimePoints ?? 0,
-          lifetimeSpend:  c.loyalty?.lifetimeSpend  ?? 0,
+        customers={customers.map((customer) => ({
+          id: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          currentPoints: customer.loyalty?.currentPoints ?? 0,
+          lifetimePoints: customer.loyalty?.lifetimePoints ?? 0,
+          lifetimeSpend: customer.loyalty?.lifetimeSpend ?? 0,
         }))}
         siteId={siteId}
         loyaltyEnabled={loyaltyProgram?.isEnabled ?? false}

@@ -242,7 +242,11 @@ export function ProductListClient({
     );
     if (match) {
       toast.success(`Found: ${match.name}`);
-      router.push(editPath(match.id));
+      if (match.isGlobal && !isMaster) {
+        toast.info("Global products are managed by the admin.");
+      } else {
+        router.push(editPath(match.id));
+      }
     } else {
       toast.info(`No product found for barcode: ${trimmed}`);
     }
@@ -381,7 +385,13 @@ export function ProductListClient({
                 ) : <div className="w-4" />}
 
                 {/* Name + meta */}
-                <button onClick={() => router.push(editPath(product.id))}
+                <button onClick={() => {
+                  if (product.isGlobal && !isMaster) {
+                    toast.info("Global products are managed by the admin.");
+                    return;
+                  }
+                  router.push(editPath(product.id));
+                }}
                   className="flex items-center gap-3 text-left min-w-0">
                   {thumb ? (
                     <img src={thumb.url} alt={product.name}
@@ -458,7 +468,10 @@ export function ProductListClient({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => router.push(editPath(product.id))}>
+                      <DropdownMenuItem
+                        disabled={product.isGlobal && !isMaster}
+                        onClick={() => router.push(editPath(product.id))}
+                      >
                         Edit
                       </DropdownMenuItem>
                       {isMaster && (

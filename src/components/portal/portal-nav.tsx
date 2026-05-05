@@ -7,9 +7,8 @@ import Link            from "next/link";
 import { ROUTES }      from "@/routes";
 import {
   Package, ShoppingCart, Receipt, BarChart3, ClipboardList,
-  Truck, Settings, Boxes, Tag, Users, FileText,
-  Star, SlidersHorizontal, History, ArrowLeftRight,
-  PackagePlus,
+  Truck, Settings, Boxes, Users, FileText,
+  Star, SlidersHorizontal, ArrowLeftRight,
 } from "lucide-react";
 
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -28,12 +27,8 @@ const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
 
 const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "inventory.products":   Boxes,
-  "inventory.categories": Tag,
-  "inventory.suppliers":  Truck,
   "inventory.stock":      Boxes,
   "inventory.adjust":     SlidersHorizontal,
-  "inventory.history":    History,
-  "inventory.receive":    PackagePlus,
   "inventory.transfers":  ArrowLeftRight,
   "sale.billing":         Receipt,
   "sale.stock":           Boxes,
@@ -46,6 +41,7 @@ const PAGE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   "pos.checkout":         ShoppingCart,
   "pos.orders":           ClipboardList,
   "billing.pos":          Receipt,
+  "billing.analytics":    BarChart3,
   "loyalty.customers":    Users,
   "loyalty.rewards":      Star,
   "reports.sales":        BarChart3,

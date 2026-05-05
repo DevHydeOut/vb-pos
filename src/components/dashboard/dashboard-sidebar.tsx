@@ -249,8 +249,8 @@ export function DashboardSidebar({
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={ROUTES.dashboard.settings}>
-                <Settings className="mr-2 h-4 w-4" /> Settings
+              <Link href={ROUTES.dashboard.globalSettings.loyalty}>
+                <Settings className="mr-2 h-4 w-4" /> Royalty Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

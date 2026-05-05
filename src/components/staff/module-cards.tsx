@@ -28,11 +28,8 @@ const DEFAULT_ICON = Package;
 
 const PAGE_DESCRIPTIONS: Record<string, string> = {
   "inventory.products":   "Manage your product catalogue",
-  "inventory.categories": "Organise by category",
   "inventory.stock":      "View current stock levels",
   "inventory.adjust":     "Stock in / out entries",
-  "inventory.history":    "Full movement history",
-  "inventory.receive":    "Receive from supplier",
   "inventory.transfers":  "Send stock between sites",
   "customers.list":       "Customer directory",
   "customers.loyalty":    "Points & rewards",
@@ -44,6 +41,7 @@ const PAGE_DESCRIPTIONS: Record<string, string> = {
   "pos.checkout":         "Point-of-sale terminal",
   "pos.orders":           "Order history",
   "billing.pos":          "POS billing and checkout",
+  "billing.analytics":    "Sales and billing analytics",
   "loyalty.customers":    "Global customer points",
   "loyalty.rewards":      "Rewards and earning rules",
   "reports.sales":        "Sales analytics",

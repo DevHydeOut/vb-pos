@@ -64,7 +64,7 @@ export default async function ManageLoyaltyPage() {
           <p className="text-sm text-muted-foreground max-w-sm">
             Enable the loyalty program in Settings → Loyalty first before managing rewards and rules.
           </p>
-          <a href={ROUTES.dashboard.settings?.loyalty ?? "/dashboard/settings/loyalty"}
+          <a href={ROUTES.dashboard.globalSettings.loyalty}
             className="mt-2 px-4 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium">
             Go to Settings
           </a>

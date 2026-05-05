@@ -60,9 +60,9 @@ async function genReceiveRef(masterProfileId: string): Promise<string> {
 
 function revalidateInventory(siteId: string) {
   revalidatePath(`/portal/${siteId}/inventory/stock`);
-  revalidatePath(`/portal/${siteId}/inventory/history`);
+  revalidatePath(`/portal/${siteId}/inventory/stock`);
   revalidatePath(`/portal/${siteId}/inventory/transfers`);
-  revalidatePath(`/portal/${siteId}/inventory/receive`);
+  revalidatePath(`/portal/${siteId}/inventory/adjust`);
 }
 
 // ═══════════════════════════════════════════════════════════════

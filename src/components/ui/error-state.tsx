@@ -15,7 +15,7 @@ function inferBackUrl(pathname: string): { url: string; label: string } | null {
     const siteId = p.split("/")[2];
     return { url: `/portal/${siteId}/inventory/products`, label: "Products" };
   }
-  // Portal: /portal/[siteId]/customers/[id] → customers list
+  // Portal: product/detail paths fall back to the site home.
   if (/\/portal\/[^/]+\/customers\/[^/]+/.test(p)) {
     const siteId = p.split("/")[2];
     return { url: `/portal/${siteId}/customers`, label: "Customers" };

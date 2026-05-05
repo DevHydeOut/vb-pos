@@ -1,10 +1,12 @@
 export const CORE_MODULE_KEYS = ["inventory", "billing", "loyalty"] as const;
 
 export const CORE_PAGE_KEYS = [
+  "inventory.products",
   "inventory.stock",
   "inventory.adjust",
   "inventory.transfers",
   "billing.pos",
+  "billing.analytics",
   "loyalty.customers",
   "loyalty.rewards",
 ] as const;

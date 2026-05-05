@@ -13,6 +13,7 @@ type BillingResult =
       pointsEarned: number;
       subtotal: number;
       discountTotal: number;
+      rewardDiscountTotal: number;
       taxTotal: number;
       grandTotal: number;
     }
@@ -40,7 +41,7 @@ async function resolveIdentity(siteId: string) {
     return {
       masterProfileId: masterResult.masterProfile.id,
       actorId: masterResult.masterProfile.id,
-      masterUserId: masterResult.masterProfile.userId,
+      masterUserId: masterResult.session.user.id,
       subUserId: null,
     };
   }
@@ -71,6 +72,21 @@ async function resolveIdentity(siteId: string) {
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function allocateDiscount(total: number, weights: number[]) {
+  const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+  let remaining = total;
+
+  return weights.map((weight, index) => {
+    if (total <= 0 || weightTotal <= 0) return 0;
+    if (index === weights.length - 1) return roundMoney(Math.min(weight, remaining));
+
+    const share = roundMoney(total * (weight / weightTotal));
+    const value = roundMoney(Math.min(weight, share, remaining));
+    remaining = roundMoney(remaining - value);
+    return value;
+  });
 }
 
 export async function completePosSaleAction(input: unknown): Promise<BillingResult> {
@@ -116,7 +132,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
     const productMap = new Map(products.map((product) => [product.id, product]));
     const referenceNo = `BILL-${Date.now().toString(36).toUpperCase()}`;
 
-    const saleLines = items.map((item) => {
+    const baseLines = items.map((item) => {
       const product = productMap.get(item.productId)!;
       const variant = item.variantId
         ? product.variants.find((candidate) => candidate.id === item.variantId)
@@ -137,12 +153,6 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
           : 0;
       const unitDiscount = roundMoney(Math.min(unitPrice, rawDiscount));
       const taxableUnitPrice = roundMoney(unitPrice - unitDiscount);
-      const taxRate = product.taxGroup?.rate ?? 0;
-      const lineSubtotal = roundMoney(unitPrice * item.quantity);
-      const lineDiscount = roundMoney(unitDiscount * item.quantity);
-      const taxableAmount = roundMoney(taxableUnitPrice * item.quantity);
-      const taxAmount = roundMoney(taxableAmount * taxRate / 100);
-      const lineTotal = roundMoney(taxableAmount + taxAmount);
 
       return {
         product,
@@ -152,20 +162,12 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
         unitDiscount,
         discountType: item.discountType,
         discountValue: item.discountValue,
-        taxRate,
-        lineSubtotal,
-        lineDiscount,
-        taxableAmount,
-        taxAmount,
-        lineTotal,
+        taxRate: product.taxGroup?.rate ?? 0,
+        lineSubtotal: roundMoney(unitPrice * item.quantity),
+        lineDiscount: roundMoney(unitDiscount * item.quantity),
+        taxableBeforeReward: roundMoney(taxableUnitPrice * item.quantity),
       };
     });
-
-    const subtotal = roundMoney(saleLines.reduce((sum, line) => sum + line.lineSubtotal, 0));
-    const discountTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.lineDiscount, 0));
-    const taxableTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.taxableAmount, 0));
-    const taxTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.taxAmount, 0));
-    const grandTotal = roundMoney(taxableTotal + taxTotal);
 
     const customer = await prisma.customer.upsert({
       where: { masterProfileId_phone: { masterProfileId: identity.masterProfileId, phone: customerPhone } },
@@ -182,6 +184,79 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
       },
       include: { loyalty: true },
     });
+
+    const reward = rewardId
+      ? await prisma.loyaltyReward.findFirst({
+          where: {
+            id: rewardId,
+            masterProfileId: identity.masterProfileId,
+            deletedAt: null,
+            isActive: true,
+            OR: [{ isGlobal: true }, { siteId }],
+          },
+        })
+      : null;
+
+    if (rewardId && !reward) return { success: false, error: "Selected reward is not available at this site" };
+    if (reward?.expiresAt && reward.expiresAt < new Date()) return { success: false, error: "Selected reward has expired" };
+    if (reward?.maxRedemptions != null && reward.redemptionCount >= reward.maxRedemptions) {
+      return { success: false, error: "Selected reward has reached its redemption limit" };
+    }
+    if (reward && (customer.loyalty?.currentPoints ?? 0) < reward.pointsCost) {
+      return { success: false, error: "Customer does not have enough royalty points for this reward" };
+    }
+
+    const subtotal = roundMoney(baseLines.reduce((sum, line) => sum + line.lineSubtotal, 0));
+    const discountTotal = roundMoney(baseLines.reduce((sum, line) => sum + line.lineDiscount, 0));
+    const taxableBeforeReward = roundMoney(baseLines.reduce((sum, line) => sum + line.taxableBeforeReward, 0));
+
+    let rewardDiscountTotal = 0;
+    let rewardDiscounts = baseLines.map(() => 0);
+
+    if (reward) {
+      if (reward.type === "FIXED_DISCOUNT") {
+        rewardDiscountTotal = roundMoney(Math.min(taxableBeforeReward, reward.discountValue ?? 0));
+        rewardDiscounts = allocateDiscount(
+          rewardDiscountTotal,
+          baseLines.map((line) => line.taxableBeforeReward)
+        );
+      } else if (reward.type === "PERCENT_DISCOUNT") {
+        const percent = Math.min(Math.max(reward.discountValue ?? 0, 0), 100);
+        rewardDiscountTotal = roundMoney(taxableBeforeReward * percent / 100);
+        rewardDiscounts = allocateDiscount(
+          rewardDiscountTotal,
+          baseLines.map((line) => line.taxableBeforeReward)
+        );
+      } else if (reward.type === "FREE_PRODUCT") {
+        const lineIndex = baseLines.findIndex((line) => line.product.id === reward.productId);
+        if (lineIndex === -1) {
+          return { success: false, error: "Add the reward product to the cart before claiming this reward" };
+        }
+
+        const line = baseLines[lineIndex];
+        rewardDiscountTotal = roundMoney(Math.min(line.unitPrice - line.unitDiscount, line.taxableBeforeReward));
+        rewardDiscounts[lineIndex] = rewardDiscountTotal;
+      }
+    }
+
+    const saleLines = baseLines.map((line, index) => {
+      const rewardDiscount = roundMoney(Math.min(line.taxableBeforeReward, rewardDiscounts[index] ?? 0));
+      const taxableAmount = roundMoney(line.taxableBeforeReward - rewardDiscount);
+      const taxAmount = roundMoney(taxableAmount * line.taxRate / 100);
+
+      return {
+        ...line,
+        rewardDiscount,
+        taxableAmount,
+        taxAmount,
+        lineTotal: roundMoney(taxableAmount + taxAmount),
+      };
+    });
+
+    rewardDiscountTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.rewardDiscount, 0));
+    const taxableTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.taxableAmount, 0));
+    const taxTotal = roundMoney(saleLines.reduce((sum, line) => sum + line.taxAmount, 0));
+    const grandTotal = roundMoney(taxableTotal + taxTotal);
 
     const siteOverride = program?.siteOverrides[0];
     const loyaltyEnabled = !!program?.isEnabled && siteOverride?.isEnabled !== false;
@@ -208,6 +283,42 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
     const pointsEarned = Math.max(0, basePoints + bonusPoints);
 
     await prisma.$transaction(async (tx) => {
+      const order = await tx.saleOrder.create({
+        data: {
+          referenceNo,
+          customerId: customer.id,
+          siteId,
+          masterProfileId: identity.masterProfileId,
+          subtotal,
+          itemDiscountTotal: discountTotal,
+          rewardDiscountTotal,
+          taxTotal,
+          grandTotal,
+          pointsEarned,
+          rewardId: reward?.id ?? null,
+          rewardName: reward?.name ?? null,
+          rewardType: reward?.type ?? null,
+          createdBy: identity.actorId,
+          items: {
+            create: saleLines.map((line) => ({
+              productId: line.product.id,
+              variantId: line.variant?.id ?? null,
+              productName: line.product.name,
+              variantName: line.variant?.name ?? null,
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+              discountType: line.discountType,
+              discountValue: line.discountValue,
+              itemDiscount: line.lineDiscount,
+              rewardDiscount: line.rewardDiscount,
+              taxRate: line.taxRate,
+              taxAmount: line.taxAmount,
+              lineTotal: line.lineTotal,
+            })),
+          },
+        },
+      });
+
       for (const line of saleLines) {
         let quantityAfter: number;
 
@@ -245,12 +356,12 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
             quantity: -line.quantity,
             quantityBefore,
             quantityAfter,
-            note: `${referenceNo} | unit ${line.unitPrice} | discount ${line.lineDiscount}`,
+            note: `${referenceNo} | unit ${line.unitPrice} | item discount ${line.lineDiscount} | reward discount ${line.rewardDiscount}`,
             productId: line.product.id,
             variantId: line.variant?.id ?? null,
             siteId,
             masterProfileId: identity.masterProfileId,
-            orderId: referenceNo,
+            orderId: order.id,
             createdBy: identity.actorId,
           },
         });
@@ -263,8 +374,8 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
           subUserId: identity.subUserId,
           action: "POS_BILL_CREATED",
           module: "billing",
-          recordId: referenceNo,
-          recordType: "Billing",
+          recordId: order.id,
+          recordType: "SaleOrder",
           metadata: {
             referenceNo,
             customerId: customer.id,
@@ -272,9 +383,10 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
             customerName: customer.name,
             subtotal,
             discountTotal,
+            rewardDiscountTotal,
             taxTotal,
             grandTotal,
-            rewardId: rewardId || null,
+            rewardId: reward?.id ?? null,
             lines: saleLines.map((line) => ({
               productId: line.product.id,
               variantId: line.variant?.id ?? null,
@@ -282,6 +394,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
               quantity: line.quantity,
               unitPrice: line.unitPrice,
               unitDiscount: line.unitDiscount,
+              rewardDiscount: line.rewardDiscount,
               taxRate: line.taxRate,
               lineTotal: line.lineTotal,
             })),
@@ -289,58 +402,16 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
         },
       });
 
-      if (pointsEarned > 0) {
-        const loyalty = await tx.customerLoyalty.upsert({
-          where: { customerId: customer.id },
-          update: {},
-          create: { customerId: customer.id, currentPoints: 0, lifetimePoints: 0, lifetimeSpend: 0 },
-        });
+      const loyalty = await tx.customerLoyalty.upsert({
+        where: { customerId: customer.id },
+        update: {},
+        create: { customerId: customer.id, currentPoints: 0, lifetimePoints: 0, lifetimeSpend: 0 },
+      });
 
-        await tx.customerLoyalty.update({
-          where: { customerId: customer.id },
-          data: {
-            currentPoints: { increment: pointsEarned },
-            lifetimePoints: { increment: pointsEarned },
-            lifetimeSpend: { increment: taxableTotal },
-          },
-        });
+      let currentBalance = loyalty.currentPoints;
 
-        await tx.loyaltyTransaction.create({
-          data: {
-            type: "EARN",
-            points: pointsEarned,
-            balanceBefore: loyalty.currentPoints,
-            balanceAfter: loyalty.currentPoints + pointsEarned,
-            note: `Earned from ${referenceNo}`,
-            customerId: customer.id,
-            siteId,
-            masterProfileId: identity.masterProfileId,
-            orderId: referenceNo,
-            createdBy: identity.actorId,
-          },
-        });
-      }
-
-      if (rewardId) {
-        const reward = await tx.loyaltyReward.findFirst({
-          where: {
-            id: rewardId,
-            masterProfileId: identity.masterProfileId,
-            deletedAt: null,
-            isActive: true,
-            OR: [{ isGlobal: true }, { siteId }],
-          },
-        });
-        const loyalty = await tx.customerLoyalty.findUnique({ where: { customerId: customer.id } });
-        if (!reward || !loyalty || loyalty.currentPoints < reward.pointsCost) {
-          throw new Error("Selected reward cannot be redeemed");
-        }
-        if (reward.maxRedemptions != null && reward.redemptionCount >= reward.maxRedemptions) {
-          throw new Error("Selected reward has reached its redemption limit");
-        }
-        if (reward.expiresAt && reward.expiresAt < new Date()) {
-          throw new Error("Selected reward has expired");
-        }
+      if (reward) {
+        if (currentBalance < reward.pointsCost) throw new Error("Customer does not have enough royalty points for this reward");
 
         await tx.customerLoyalty.update({
           where: { customerId: customer.id },
@@ -354,14 +425,41 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
           data: {
             type: "REDEEM",
             points: -reward.pointsCost,
-            balanceBefore: loyalty.currentPoints,
-            balanceAfter: loyalty.currentPoints - reward.pointsCost,
+            balanceBefore: currentBalance,
+            balanceAfter: currentBalance - reward.pointsCost,
             note: `Redeemed ${reward.name} on ${referenceNo}`,
             customerId: customer.id,
             rewardId: reward.id,
             siteId,
             masterProfileId: identity.masterProfileId,
-            orderId: referenceNo,
+            orderId: order.id,
+            createdBy: identity.actorId,
+          },
+        });
+        currentBalance -= reward.pointsCost;
+      }
+
+      await tx.customerLoyalty.update({
+        where: { customerId: customer.id },
+        data: {
+          currentPoints: { increment: pointsEarned },
+          lifetimePoints: { increment: pointsEarned },
+          lifetimeSpend: { increment: taxableTotal },
+        },
+      });
+
+      if (pointsEarned > 0) {
+        await tx.loyaltyTransaction.create({
+          data: {
+            type: "EARN",
+            points: pointsEarned,
+            balanceBefore: currentBalance,
+            balanceAfter: currentBalance + pointsEarned,
+            note: `Earned from ${referenceNo}`,
+            customerId: customer.id,
+            siteId,
+            masterProfileId: identity.masterProfileId,
+            orderId: order.id,
             createdBy: identity.actorId,
           },
         });
@@ -371,9 +469,17 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
     revalidatePath(`/portal/${siteId}/billing/pos`);
     revalidatePath(`/portal/${siteId}/inventory/stock`);
     revalidatePath(`/portal/${siteId}/loyalty/customers`);
-    revalidatePath(`/portal/${siteId}/customers/loyalty`);
 
-    return { success: true, referenceNo, pointsEarned, subtotal, discountTotal, taxTotal, grandTotal };
+    return {
+      success: true,
+      referenceNo,
+      pointsEarned,
+      subtotal,
+      discountTotal,
+      rewardDiscountTotal,
+      taxTotal,
+      grandTotal,
+    };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to complete bill" };
   }

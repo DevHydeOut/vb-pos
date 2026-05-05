@@ -13,9 +13,10 @@ const modules = [
     label: "Stock Management",
     sortOrder: 1,
     pages: [
-      { key: "inventory.stock", label: "Stock", sortOrder: 1 },
-      { key: "inventory.adjust", label: "Stock Entry", sortOrder: 2 },
-      { key: "inventory.transfers", label: "Site Transfers", sortOrder: 3 },
+      { key: "inventory.products", label: "Products", sortOrder: 1 },
+      { key: "inventory.stock", label: "Stock", sortOrder: 2 },
+      { key: "inventory.adjust", label: "Stock Entry", sortOrder: 3 },
+      { key: "inventory.transfers", label: "Site Transfers", sortOrder: 4 },
     ],
   },
   {
@@ -24,6 +25,7 @@ const modules = [
     sortOrder: 2,
     pages: [
       { key: "billing.pos", label: "POS Billing", sortOrder: 1 },
+      { key: "billing.analytics", label: "Analytics", sortOrder: 2 },
     ],
   },
   {

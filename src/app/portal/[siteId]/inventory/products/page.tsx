@@ -1,67 +1,96 @@
-import { redirect }           from "next/navigation";
-import { getMasterProfile }   from "@/data/master";
-import { getStaffSession }    from "@/actions/auth/staff";
-import { prisma }             from "@/lib/prisma";
-import { ROUTES }             from "@/routes";
-import { ProductListClient }  from "@/components/portal/inventory/product-list-client";
-import { PageHeader } from "@/components/shared/page-header";
- 
-export default async function ProductsPage({
+import { notFound, redirect } from "next/navigation";
+import { ProductListClient } from "@/components/portal/inventory/product-list-client";
+import { getMasterProfile } from "@/data/master";
+import { getStaffSession } from "@/actions/auth/staff";
+import { prisma } from "@/lib/prisma";
+import { ROUTES } from "@/routes";
+
+async function resolveAccess(siteId: string) {
+  const masterResult = await getMasterProfile().catch(() => null);
+  if (masterResult) {
+    const site = await prisma.site.findFirst({
+      where: { id: siteId, masterProfileId: masterResult.masterProfile.id, isActive: true },
+      select: { id: true, name: true, masterProfileId: true },
+    });
+    if (!site) notFound();
+    return { masterProfileId: masterResult.masterProfile.id, siteName: site.name, isMaster: true };
+  }
+
+  const staffSession = await getStaffSession().catch(() => null);
+  if (!staffSession) redirect(ROUTES.auth.login);
+
+  const subUserSite = await prisma.subUserSite.findUnique({
+    where: { subUserId_siteId: { subUserId: staffSession.subUserId, siteId } },
+    include: { site: true, permissions: { include: { module: true, page: true } } },
+  });
+  if (!subUserSite?.site.isActive) notFound();
+
+  const canManageProducts = subUserSite.permissions.some(
+    (permission) =>
+      (permission.module?.key === "inventory" && !permission.page) ||
+      permission.page?.key === "inventory.products"
+  );
+  if (!canManageProducts) notFound();
+
+  return { masterProfileId: subUserSite.site.masterProfileId, siteName: subUserSite.site.name, isMaster: false };
+}
+
+export default async function SiteProductsPage({
   params,
 }: {
   params: Promise<{ siteId: string }>;
 }) {
-  const { siteId }   = await params;
-  const masterResult = await getMasterProfile().catch(() => null);
-  const staffSession = await getStaffSession().catch(() => null);
-  if (!masterResult && !staffSession) redirect(ROUTES.auth.login);
- 
-  const masterProfileId = masterResult
-    ? masterResult.masterProfile.id
-    : (await prisma.site.findUnique({ where: { id: siteId } }))!.masterProfileId;
- 
-  const site = await prisma.site.findUnique({ where: { id: siteId } });
-  if (!site) redirect(ROUTES.auth.login);
- 
+  const { siteId } = await params;
+  const access = await resolveAccess(siteId);
+
   const [products, categories, allSites] = await Promise.all([
     prisma.product.findMany({
-      where:   { siteId, masterProfileId, deletedAt: null },
+      where: {
+        masterProfileId: access.masterProfileId,
+        deletedAt: null,
+        OR: [{ siteId }, { siteId: null, isGlobal: true }],
+      },
       include: {
         category: { select: { id: true, name: true } },
         taxGroup: { select: { id: true, name: true } },
-        images:   { orderBy: { sortOrder: "asc" } },
-        variants: {
-          where:   { deletedAt: null },
-          orderBy: { createdAt: "asc" },
-        },
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
     }),
-prisma.category.findMany({
-      where:   { masterProfileId, deletedAt: null, OR: [{ siteId }, { siteId: null }] },
+    prisma.category.findMany({
+      where: {
+        masterProfileId: access.masterProfileId,
+        deletedAt: null,
+        OR: [{ siteId }, { siteId: null }, { isGlobal: true }],
+      },
       orderBy: { name: "asc" },
-      select:  { id: true, name: true, siteId: true },
+      select: { id: true, name: true },
     }),
-    masterResult
-      ? prisma.site.findMany({
-          where:   { masterProfileId, isActive: true },
-          orderBy: { name: "asc" },
-          select:  { id: true, name: true },
-        })
-      : Promise.resolve([]),
+    prisma.site.findMany({
+      where: { masterProfileId: access.masterProfileId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
- 
+
   return (
     <main className="px-6 py-10 max-w-6xl space-y-8">
-      <PageHeader title="Products" description="Manage products for {site.name}." />
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">Stock Management</p>
+        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+        <p className="text-sm text-muted-foreground">
+          Add products for {access.siteName}; global products are available for billing but editable by admin.
+        </p>
+      </div>
       <div className="border-t border-border" />
       <ProductListClient
         products={products}
         allSites={allSites}
         categories={categories}
         siteId={siteId}
-        siteName={site.name}
-        isMaster={!!masterResult}
+        siteName={access.siteName}
+        isMaster={access.isMaster}
       />
     </main>
   );

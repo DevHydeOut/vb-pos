@@ -717,8 +717,8 @@ export function StockEntryClient({ siteId, site, products, timezone, recentProdu
             <Button onClick={() => { setSaved(null); setNote(""); setLocation(""); }}>
               <Plus className="h-4 w-4" /> New Entry
             </Button>
-            <Button variant="outline" onClick={() => router.push(ROUTES.staff.inventory.history(siteId))}>
-              View History
+            <Button variant="outline" onClick={() => router.push(ROUTES.staff.inventory.stock(siteId))}>
+              View Stock
             </Button>
           </div>
         </div>

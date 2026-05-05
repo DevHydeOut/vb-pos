@@ -16,11 +16,18 @@ export const auth = betterAuth({
     },
   },
 
-  // Auto-create MasterProfile when a new user signs up via Google
+  // Single-user app: the first Google user creates the one master profile.
+  // Later Google logins are treated as admin sessions by getMasterProfile().
   databaseHooks: {
     user: {
       create: {
         after: async (user) => {
+          const existingMaster = await prisma.masterProfile.findFirst({
+            orderBy: { createdAt: "asc" },
+            select: { id: true },
+          });
+          if (existingMaster) return;
+
           await prisma.masterProfile.create({
             data: {
               userId: user.id,

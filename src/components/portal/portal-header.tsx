@@ -298,9 +298,11 @@ export function PortalHeader({
               <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer" asChild>
                 <Link href={`/portal/${siteId}/profile`}><User className="h-4 w-4" /> My Profile</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer" asChild>
-                <Link href={`/portal/${siteId}/settings`}><Settings className="h-4 w-4" /> Settings</Link>
-              </DropdownMenuItem>
+              {user.isMaster && (
+                <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer" asChild>
+                  <Link href={ROUTES.dashboard.profile}><Settings className="h-4 w-4" /> Admin Settings</Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={toggleTheme} className="rounded-xl gap-3 cursor-pointer">
                 {theme === "dark" ? <><Sun className="h-4 w-4" /> Light mode</> : <><Moon className="h-4 w-4" /> Dark mode</>}
               </DropdownMenuItem>

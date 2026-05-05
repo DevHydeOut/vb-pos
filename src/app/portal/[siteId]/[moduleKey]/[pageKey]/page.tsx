@@ -11,26 +11,13 @@ import { Construction }       from "lucide-react";
 
 /* ── Real page imports (paths match actual on-disk files) ────── */
 
-// Inventory
 import ProductsPage        from "@/app/portal/[siteId]/inventory/products/page";
-import CategoriesPage      from "@/app/portal/[siteId]/inventory/categories/page";
 import StockPage           from "@/app/portal/[siteId]/inventory/stock/page";
 import AdjustPage          from "@/app/portal/[siteId]/inventory/adjust/page";
-import HistoryPage         from "@/app/portal/[siteId]/inventory/history/page";
 import TransfersPage       from "@/app/portal/[siteId]/inventory/transfers/page";
-
-// Customers
-import CustomersPage       from "@/app/portal/[siteId]/customers/page";
-import CustomerLoyaltyPage from "@/app/portal/[siteId]/customers/loyalty/page";
-
-// Sale
-import CouponsPage         from "@/app/portal/[siteId]/sale/coupons/page";
-import TaxPage             from "@/app/portal/[siteId]/settings/tax/page";
-
-// Settings
-import LoyaltySettingsPage from "@/app/portal/[siteId]/settings/loyalty/page";
-import GeneralSettingsPage from "@/app/portal/[siteId]/settings/general/page";
 import BillingPosPage      from "@/app/portal/[siteId]/billing/pos/page";
+import BillingAnalyticsPage from "@/app/portal/[siteId]/billing/analytics/page";
+import CustomerLoyaltyPage from "@/app/portal/[siteId]/loyalty/customers/page";
 import LoyaltyRewardsPage  from "@/app/portal/[siteId]/loyalty/rewards/page";
 import { isCoreModule, isCorePage } from "@/config/app-modules";
 
@@ -78,20 +65,13 @@ export default async function PageDispatcher({ params }: PageProps) {
 
   switch (fullKey) {
     case "inventory.products":    return <ProductsPage        params={siteParams} />;
-    case "inventory.categories":  return <CategoriesPage      params={siteParams} />;
     case "inventory.stock":       return <StockPage           params={siteParams} />;
     case "inventory.adjust":      return <AdjustPage          params={siteParams} />;
-    case "inventory.history":     return <HistoryPage         params={siteParams} />;
     case "inventory.transfers":   return <TransfersPage       params={siteParams} />;
     case "billing.pos":           return <BillingPosPage      params={siteParams} />;
-    case "customers.list":        return <CustomersPage       params={siteParams} />;
-    case "customers.loyalty":     return <CustomerLoyaltyPage params={siteParams} />;
+    case "billing.analytics":     return <BillingAnalyticsPage params={siteParams} />;
     case "loyalty.customers":     return <CustomerLoyaltyPage params={siteParams} />;
     case "loyalty.rewards":       return <LoyaltyRewardsPage  params={siteParams} />;
-    case "sale.coupons":          return <CouponsPage         params={siteParams} />;
-    case "settings.tax":          return <TaxPage             params={siteParams} />;
-    case "settings.loyalty":      return <LoyaltySettingsPage params={siteParams} />;
-    case "settings.general":      return <GeneralSettingsPage params={siteParams} />;
     default:                      return <ComingSoon pageKey={fullKey} />;
   }
 }

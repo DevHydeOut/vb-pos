@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   Search, X, AlertTriangle, PackageX,
-  CheckCircle, SlidersHorizontal, History,
+  CheckCircle, SlidersHorizontal,
   ChevronDown, ChevronRight, ArrowLeftRight,
 } from "lucide-react";
 
@@ -85,7 +85,6 @@ export function StockLevelsClient({ products, siteId }: Props) {
           <PageHeader title="Stock Levels" description="Current inventory levels across all products" />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.push(`/portal/${siteId}/inventory/history`)}><History className="h-4 w-4" /> History</Button>
           <Button variant="outline" size="sm" onClick={() => router.push(`/portal/${siteId}/inventory/transfers`)}><ArrowLeftRight className="h-4 w-4" /> Transfers</Button>
           <Button onClick={() => router.push(`/portal/${siteId}/inventory/adjust`)}><SlidersHorizontal className="h-4 w-4" /> Adjust</Button>
         </div>

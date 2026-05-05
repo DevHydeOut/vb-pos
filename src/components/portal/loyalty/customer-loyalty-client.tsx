@@ -1,6 +1,6 @@
 "use client";
 
-// src/components/portal/customers/customer-loyalty-client.tsx
+// src/components/portal/loyalty/customer-loyalty-client.tsx
 
 import { useState }  from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ export function CustomerLoyaltyClient({
           Enable the loyalty program in settings to start tracking customer points.
         </p>
         <button
-          onClick={() => router.push(ROUTES.staff.loyalty(siteId))}
+          onClick={() => router.push(ROUTES.staff.loyaltyModule.rewards(siteId))}
           className="px-4 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium">
           Go to Settings
         </button>
@@ -86,7 +86,7 @@ export function CustomerLoyaltyClient({
 
       {/* Header */}
       <div>
-        <PageHeader title="pointsName + ' Overview'" />
+        <PageHeader title={`${pointsName} Overview`} />
       </div>
 
       {/* Summary cards */}
@@ -172,11 +172,10 @@ export function CustomerLoyaltyClient({
             const rank = search ? null : idx;
 
             return (
-              <button
+              <div
                 key={customer.id}
-                onClick={() => router.push(ROUTES.staff.customer(siteId, customer.id))}
                 className="w-full flex items-center gap-4 px-4 py-3.5 border border-border
-                  rounded-2xl hover:bg-muted/40 transition-colors text-left group">
+                  rounded-2xl text-left">
 
                 {/* Rank */}
                 <div className="w-8 text-center shrink-0">
@@ -216,7 +215,7 @@ export function CustomerLoyaltyClient({
 
                 <ChevronRight className="h-4 w-4 text-muted-foreground
                   group-hover:text-foreground transition-colors shrink-0" />
-              </button>
+              </div>
             );
           })}
         </div>

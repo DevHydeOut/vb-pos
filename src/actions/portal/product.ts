@@ -29,9 +29,20 @@ async function resolveIdentity(siteId: string | null) {
 
   const staffSession = await getStaffSession().catch(() => null);
   if (staffSession && siteId) {
-    const site = await prisma.site.findFirst({ where: { id: siteId } });
-    if (!site) throw new Error("Site not found");
-    return { masterProfileId: site.masterProfileId, type: "staff" as const };
+    const subUserSite = await prisma.subUserSite.findUnique({
+      where: { subUserId_siteId: { subUserId: staffSession.subUserId, siteId } },
+      include: { site: true, permissions: { include: { module: true, page: true } } },
+    });
+    if (!subUserSite?.site.isActive) throw new Error("Site not found");
+
+    const canManageProducts = subUserSite.permissions.some(
+      (permission) =>
+        (permission.module?.key === "inventory" && !permission.page) ||
+        permission.page?.key === "inventory.products"
+    );
+    if (!canManageProducts) throw new Error("You do not have product permission");
+
+    return { masterProfileId: subUserSite.site.masterProfileId, type: "staff" as const };
   }
   throw new Error("Unauthorized");
 }
@@ -146,6 +157,9 @@ export async function updateProductAction(
       where: { id: productId, masterProfileId: identity.masterProfileId, deletedAt: null },
     });
     if (!product) return { success: false, error: "Product not found" };
+    if (identity.type === "staff" && (product.siteId !== siteId || product.isGlobal)) {
+      return { success: false, error: "Staff can only edit products created for this site" };
+    }
 
     const parsed = productSchema.safeParse({
       name:              formData.get("name"),
@@ -207,8 +221,8 @@ export async function softDeleteProductAction(
     const identity = await resolveIdentity(siteId);
 
     if (identity.type === "staff") {
-      const product = await prisma.product.findFirst({
-        where: { id: productId, masterProfileId: identity.masterProfileId, isGlobal: true },
+    const product = await prisma.product.findFirst({
+      where: { id: productId, masterProfileId: identity.masterProfileId, isGlobal: true },
       });
       if (product) return { success: false, error: "Staff cannot delete global products" };
     }
@@ -326,6 +340,9 @@ export async function createVariantAction(
       where: { id: productId, masterProfileId: identity.masterProfileId, deletedAt: null },
     });
     if (!product)              return { success: false, error: "Product not found" };
+    if (identity.type === "staff" && (product.siteId !== siteId || product.isGlobal)) {
+      return { success: false, error: "Staff can only edit variants on site products" };
+    }
     if (!product.hasVariants)  return { success: false, error: "Product does not use variants" };
 
     const parsed = variantSchema.safeParse({
@@ -370,8 +387,12 @@ export async function updateVariantAction(
 
     const variant = await prisma.productVariant.findFirst({
       where: { id: variantId, productId, product: { masterProfileId: identity.masterProfileId } },
+      include: { product: { select: { siteId: true, isGlobal: true } } },
     });
     if (!variant) return { success: false, error: "Variant not found" };
+    if (identity.type === "staff" && (variant.product.siteId !== siteId || variant.product.isGlobal)) {
+      return { success: false, error: "Staff can only edit variants on site products" };
+    }
 
     const parsed = variantSchema.safeParse({
       name:              formData.get("name"),
@@ -414,8 +435,12 @@ export async function deleteVariantAction(
 
     const variant = await prisma.productVariant.findFirst({
       where: { id: variantId, productId, product: { masterProfileId: identity.masterProfileId } },
+      include: { product: { select: { siteId: true, isGlobal: true } } },
     });
     if (!variant) return { success: false, error: "Variant not found" };
+    if (identity.type === "staff" && (variant.product.siteId !== siteId || variant.product.isGlobal)) {
+      return { success: false, error: "Staff can only delete variants on site products" };
+    }
 
     await prisma.productVariant.update({
       where: { id: variantId },
@@ -447,6 +472,9 @@ export async function addProductImageAction(
       where: { id: productId, masterProfileId: identity.masterProfileId, deletedAt: null },
     });
     if (!product) return { success: false, error: "Product not found" };
+    if (identity.type === "staff" && (product.siteId !== siteId || product.isGlobal)) {
+      return { success: false, error: "Staff can only add images to site products" };
+    }
 
     await prisma.productImage.create({
       data: { url, storagePath, sortOrder, productId },
@@ -471,6 +499,9 @@ export async function deleteProductImageAction(
       include: { product: true },
     });
     if (!image) return { success: false, error: "Image not found" };
+    if (identity.type === "staff" && (image.product.siteId !== siteId || image.product.isGlobal)) {
+      return { success: false, error: "Staff can only delete images from site products" };
+    }
 
     // Delete from Supabase Storage
     const supabase = createClient(

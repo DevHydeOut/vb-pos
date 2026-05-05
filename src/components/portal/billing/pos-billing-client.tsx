@@ -48,6 +48,8 @@ interface Reward {
   name: string;
   pointsCost: number;
   type: string;
+  discountValue: number | null;
+  productId: string | null;
 }
 
 interface CustomerLookup {
@@ -73,6 +75,21 @@ function lineKey(productId: string, variantId?: string | null) {
 
 function money(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function allocateDiscount(total: number, weights: number[]) {
+  const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+  let remaining = total;
+
+  return weights.map((weight, index) => {
+    if (total <= 0 || weightTotal <= 0) return 0;
+    if (index === weights.length - 1) return money(Math.min(weight, remaining));
+
+    const share = money(total * (weight / weightTotal));
+    const value = money(Math.min(weight, share, remaining));
+    remaining = money(remaining - value);
+    return value;
+  });
 }
 
 export function PosBillingClient({
@@ -102,9 +119,13 @@ export function PosBillingClient({
     );
   }, [products, search]);
 
+  const selectedReward = useMemo(
+    () => customer?.availableRewards.find((reward) => reward.id === rewardId) ?? null,
+    [customer, rewardId]
+  );
+
   const totals = useMemo(() => {
-    return cart.reduce(
-      (acc, line) => {
+    const baseLines = cart.map((line) => {
         const unitPrice = line.variant?.sellingPrice ?? line.product.sellingPrice ?? 0;
         const rawDiscount = line.discountType === "PERCENT"
           ? unitPrice * Math.min(line.discountValue, 100) / 100
@@ -115,19 +136,51 @@ export function PosBillingClient({
         const taxableUnit = money(unitPrice - unitDiscount);
         const subtotal = money(unitPrice * line.quantity);
         const discount = money(unitDiscount * line.quantity);
-        const taxable = money(taxableUnit * line.quantity);
-        const tax = money(taxable * line.product.taxRate / 100);
+        const taxableBeforeReward = money(taxableUnit * line.quantity);
 
-        acc.subtotal += subtotal;
-        acc.discount += discount;
-        acc.tax += tax;
-        acc.total += taxable + tax;
-        acc.items += line.quantity;
-        return acc;
-      },
-      { subtotal: 0, discount: 0, tax: 0, total: 0, items: 0 }
-    );
-  }, [cart]);
+        return { line, unitPrice, unitDiscount, subtotal, discount, taxableBeforeReward };
+    });
+
+    const subtotal = money(baseLines.reduce((sum, line) => sum + line.subtotal, 0));
+    const discount = money(baseLines.reduce((sum, line) => sum + line.discount, 0));
+    const taxableBeforeReward = money(baseLines.reduce((sum, line) => sum + line.taxableBeforeReward, 0));
+
+    let rewardDiscount = 0;
+    let rewardDiscounts = baseLines.map(() => 0);
+
+    if (selectedReward) {
+      if (selectedReward.type === "FIXED_DISCOUNT") {
+        rewardDiscount = money(Math.min(taxableBeforeReward, selectedReward.discountValue ?? 0));
+        rewardDiscounts = allocateDiscount(rewardDiscount, baseLines.map((line) => line.taxableBeforeReward));
+      } else if (selectedReward.type === "PERCENT_DISCOUNT") {
+        const percent = Math.min(Math.max(selectedReward.discountValue ?? 0, 0), 100);
+        rewardDiscount = money(taxableBeforeReward * percent / 100);
+        rewardDiscounts = allocateDiscount(rewardDiscount, baseLines.map((line) => line.taxableBeforeReward));
+      } else if (selectedReward.type === "FREE_PRODUCT") {
+        const lineIndex = baseLines.findIndex((line) => line.line.product.id === selectedReward.productId);
+        if (lineIndex !== -1) {
+          const line = baseLines[lineIndex];
+          rewardDiscount = money(Math.min(line.unitPrice - line.unitDiscount, line.taxableBeforeReward));
+          rewardDiscounts[lineIndex] = rewardDiscount;
+        }
+      }
+    }
+
+    const tax = money(baseLines.reduce((sum, line, index) => {
+      const taxable = money(line.taxableBeforeReward - Math.min(line.taxableBeforeReward, rewardDiscounts[index] ?? 0));
+      return sum + money(taxable * line.line.product.taxRate / 100);
+    }, 0));
+    const taxable = money(taxableBeforeReward - rewardDiscount);
+
+    return {
+      subtotal,
+      discount,
+      rewardDiscount,
+      tax,
+      total: money(taxable + tax),
+      items: cart.reduce((sum, line) => sum + line.quantity, 0),
+    };
+  }, [cart, selectedReward]);
 
   function addProduct(product: Product, variant: Variant | null = null) {
     const key = lineKey(product.id, variant?.id);
@@ -442,6 +495,12 @@ export function PosBillingClient({
                 <span>Item discounts</span>
                 <span>-{currencySymbol}{money(totals.discount).toFixed(2)}</span>
               </div>
+              {totals.rewardDiscount > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Reward discount</span>
+                  <span>-{currencySymbol}{money(totals.rewardDiscount).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-muted-foreground">
                 <span>Tax</span>
                 <span>{currencySymbol}{money(totals.tax).toFixed(2)}</span>

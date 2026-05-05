@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider }   from "@/components/providers/theme-provider";
 import "./globals.css";
-
-const sora = Sora({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Pigaro",
@@ -21,9 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${sora.className} antialiased`}
-      >
+      <body className="font-sans antialiased">
         <ThemeProvider>
         {children}
         <Toaster position="top-right" richColors />

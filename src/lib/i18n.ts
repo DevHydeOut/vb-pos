@@ -20,7 +20,7 @@ const en = {
   "receipt.discount":      "Discount",
   "receipt.total":         "Total",
   "receipt.thankyou":      "Thank you for your visit!",
-  "receipt.poweredBy":     "Powered by POSS",
+  "receipt.poweredBy":     "Powered by POS Manager",
 
   // Coupon
   "coupon.applied":        "Coupon applied",

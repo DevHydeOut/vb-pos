@@ -38,6 +38,11 @@ export default async function PortalLayout({
     siteName        = site?.name ?? "Site";
     masterProfileId = masterResult!.masterProfile.id;
     user            = { name: "Admin", username: "admin", isMaster: true };
+    otherSites      = await prisma.site.findMany({
+      where: { masterProfileId, isActive: true, id: { not: siteId } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }).then((sites) => sites.map((site) => ({ siteId: site.id, name: site.name })));
 
     const allModules = await prisma.module.findMany({
       where: { key: { in: ["inventory", "billing", "loyalty"] } },
@@ -129,29 +134,27 @@ export default async function PortalLayout({
   }).catch(() => 0);
 
   return (
-    <div className="h-screen overflow-hidden bg-background flex flex-col">
-      <PortalHeader
-        siteId={siteId}
-        siteName={siteName}
-        otherSites={otherSites}
-        user={user}
-        notifications={notifications}
-        unreadCount={unreadCount}
-      />
-
-      {/*
-        overflow-y-auto + pb-24 = scrollable content area with space for the floating nav.
-        Stock-entry uses fixed positioning so it breaks out of this scroll naturally.
-      */}
-      <div className="flex-1 overflow-y-auto pb-24 min-h-0">
-        {children}
-      </div>
-
+    <div className="flex h-screen overflow-hidden bg-background">
       <PortalNav
         siteId={siteId}
         modules={navModules}
         pendingTransferCount={pendingTransferCount}
       />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <PortalHeader
+          siteId={siteId}
+          siteName={siteName}
+          otherSites={otherSites}
+          user={user}
+          notifications={notifications}
+          unreadCount={unreadCount}
+        />
+
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

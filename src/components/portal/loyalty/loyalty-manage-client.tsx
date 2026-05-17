@@ -71,8 +71,8 @@ interface Props {
 
 const REWARD_TYPES: { type: RewardType; label: string; icon: React.ComponentType<{className?:string}>; desc: string }[] = [
   { type: "FREE_PRODUCT",     label: "Free Product",       icon: Package,  desc: "Give a specific product for free"          },
-  { type: "FIXED_DISCOUNT",   label: "Fixed Discount",     icon: Gift,     desc: "Deduct a fixed amount from the total"      },
-  { type: "PERCENT_DISCOUNT", label: "Percentage Off",     icon: Percent,  desc: "Apply a percentage discount to the total"  },
+  { type: "FIXED_DISCOUNT",   label: "Fixed Discount",     icon: Gift,     desc: "Deduct a fixed amount before tax"          },
+  { type: "PERCENT_DISCOUNT", label: "Percentage Off",     icon: Percent,  desc: "Apply percentage off before tax"          },
   { type: "CUSTOM_VOUCHER",   label: "Custom Voucher",     icon: FileText, desc: "Staff handles the reward manually"         },
 ];
 
@@ -168,7 +168,7 @@ function RewardModal({
           <div className="space-y-2">
             <Label>Reward Name <span className="text-destructive">*</span></Label>
             <Input value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Free Coffee, $10 Off" className="h-10" autoFocus />
+              placeholder="e.g. Free Coffee, Rs.100 Off" className="h-10" autoFocus />
           </div>
 
           {/* Description */}

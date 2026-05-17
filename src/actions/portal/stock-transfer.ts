@@ -23,6 +23,11 @@ type ActionResult<T = undefined> =
 async function resolveIdentity(siteId: string) {
   const masterResult = await getMasterProfile().catch(() => null);
   if (masterResult) {
+    const site = await prisma.site.findFirst({
+      where: { id: siteId, masterProfileId: masterResult.masterProfile.id, isActive: true },
+      select: { id: true },
+    });
+    if (!site) throw new Error("Site not found");
     return {
       masterProfileId: masterResult.masterProfile.id,
       actorId:         masterResult.masterProfile.userId,
@@ -31,10 +36,20 @@ async function resolveIdentity(siteId: string) {
   }
   const staffSession = await getStaffSession().catch(() => null);
   if (staffSession) {
-    const site = await prisma.site.findFirst({ where: { id: siteId } });
-    if (!site) throw new Error("Site not found");
+    const subUserSite = await prisma.subUserSite.findUnique({
+      where: { subUserId_siteId: { subUserId: staffSession.subUserId, siteId } },
+      include: { site: true, permissions: { include: { module: true, page: true } } },
+    });
+    if (!subUserSite?.site.isActive) throw new Error("Site not found");
+    const canTransfer = subUserSite.permissions.some(
+      (permission) =>
+        (permission.module?.key === "inventory" && !permission.page) ||
+        permission.page?.key === "inventory.transfers" ||
+        permission.page?.key === "inventory.adjust"
+    );
+    if (!canTransfer) throw new Error("You do not have stock transfer permission");
     return {
-      masterProfileId: site.masterProfileId,
+      masterProfileId: subUserSite.site.masterProfileId,
       actorId:         staffSession.subUser.id,
       isMaster:        false,
     };
@@ -94,7 +109,12 @@ export async function createStockReceiveAction(
 
     const productIds = [...new Set(items.map((i) => i.productId))];
     const products   = await prisma.product.findMany({
-      where:   { id: { in: productIds }, masterProfileId: identity.masterProfileId, deletedAt: null },
+      where: {
+        id: { in: productIds },
+        masterProfileId: identity.masterProfileId,
+        deletedAt: null,
+        OR: [{ siteId }, { siteId: null, isGlobal: true }],
+      },
       include: { variants: { where: { deletedAt: null, isActive: true } } },
     });
     if (products.length !== productIds.length)
@@ -210,7 +230,12 @@ export async function createStockTransferAction(
 
     const productIds = [...new Set(items.map((i) => i.productId))];
     const products   = await prisma.product.findMany({
-      where:   { id: { in: productIds }, masterProfileId: identity.masterProfileId, deletedAt: null },
+      where: {
+        id: { in: productIds },
+        masterProfileId: identity.masterProfileId,
+        deletedAt: null,
+        siteId: fromSiteId,
+      },
       include: { variants: { where: { deletedAt: null, isActive: true } } },
     });
     if (products.length !== productIds.length)
@@ -321,6 +346,43 @@ export async function acceptStockTransferAction(
         if (qtyReceived === 0) continue;
 
         const ref = `Transfer ${transfer.referenceNo}`;
+        const sourceProduct = item.product;
+        const sourceIsSiteStock = sourceProduct.siteId === transfer.fromSiteId && !sourceProduct.isGlobal;
+        let destinationProduct = { id: sourceProduct.id, stock: sourceProduct.stock };
+
+        if (sourceIsSiteStock) {
+          destinationProduct = await tx.product.findFirst({
+            where: {
+              masterProfileId: identity.masterProfileId,
+              siteId: transfer.toSiteId,
+              deletedAt: null,
+              OR: [
+                ...(sourceProduct.sku ? [{ sku: sourceProduct.sku }] : []),
+                { name: sourceProduct.name },
+              ],
+            },
+            select: { id: true, stock: true },
+          }) ?? await tx.product.create({
+            data: {
+              name: sourceProduct.name,
+              description: sourceProduct.description,
+              sku: sourceProduct.sku,
+              barcode: sourceProduct.barcode,
+              categoryId: sourceProduct.categoryId,
+              taxGroupId: sourceProduct.taxGroupId,
+              costPrice: sourceProduct.costPrice,
+              sellingPrice: sourceProduct.sellingPrice,
+              stock: 0,
+              lowStockThreshold: sourceProduct.lowStockThreshold,
+              hasVariants: sourceProduct.hasVariants,
+              isActive: true,
+              isGlobal: false,
+              masterProfileId: identity.masterProfileId,
+              siteId: transfer.toSiteId,
+            },
+            select: { id: true, stock: true },
+          });
+        }
 
         if (item.variantId && item.variant) {
           // Deduct from source
@@ -339,14 +401,40 @@ export async function acceptStockTransferAction(
             },
           });
           // Add to destination
-          const afterIn = afterOut + qtyReceived;
-          await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: afterIn } });
+          let destinationVariant = item.variant;
+          if (destinationProduct.id !== sourceProduct.id) {
+            destinationVariant = await tx.productVariant.findFirst({
+              where: {
+                productId: destinationProduct.id,
+                deletedAt: null,
+                OR: [
+                  ...(item.variant.sku ? [{ sku: item.variant.sku }] : []),
+                  { name: item.variant.name },
+                ],
+              },
+            }) ?? await tx.productVariant.create({
+              data: {
+                name: item.variant.name,
+                sku: item.variant.sku,
+                barcode: item.variant.barcode,
+                costPrice: item.variant.costPrice,
+                sellingPrice: item.variant.sellingPrice,
+                stock: 0,
+                lowStockThreshold: item.variant.lowStockThreshold,
+                isActive: true,
+                productId: destinationProduct.id,
+              },
+            });
+          }
+          const beforeIn = destinationProduct.id === sourceProduct.id ? afterOut : destinationVariant.stock;
+          const afterIn = beforeIn + qtyReceived;
+          await tx.productVariant.update({ where: { id: destinationVariant.id }, data: { stock: afterIn } });
           await tx.stockMovement.create({
             data: {
               type: "TRANSFER_IN", quantity: qtyReceived,
-              quantityBefore: afterOut, quantityAfter: afterIn,
+              quantityBefore: beforeIn, quantityAfter: afterIn,
               note: `${ref} ← ${transfer.fromSite.name}`,
-              productId: item.productId, variantId: item.variantId,
+              productId: destinationProduct.id, variantId: destinationVariant.id,
               siteId: transfer.toSiteId, masterProfileId: identity.masterProfileId,
               orderId: transfer.id, createdBy: identity.actorId,
             },
@@ -367,14 +455,15 @@ export async function acceptStockTransferAction(
               orderId: transfer.id, createdBy: identity.actorId,
             },
           });
-          const afterIn = afterOut + qtyReceived;
-          await tx.product.update({ where: { id: item.productId }, data: { stock: afterIn } });
+          const beforeIn = destinationProduct.id === sourceProduct.id ? afterOut : destinationProduct.stock;
+          const afterIn = beforeIn + qtyReceived;
+          await tx.product.update({ where: { id: destinationProduct.id }, data: { stock: afterIn } });
           await tx.stockMovement.create({
             data: {
               type: "TRANSFER_IN", quantity: qtyReceived,
-              quantityBefore: afterOut, quantityAfter: afterIn,
+              quantityBefore: beforeIn, quantityAfter: afterIn,
               note: `${ref} ← ${transfer.fromSite.name}`,
-              productId: item.productId, variantId: null,
+              productId: destinationProduct.id, variantId: null,
               siteId: transfer.toSiteId, masterProfileId: identity.masterProfileId,
               orderId: transfer.id, createdBy: identity.actorId,
             },

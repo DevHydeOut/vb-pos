@@ -14,6 +14,9 @@ export const ROUTES = {
     manage: {
       root: "/dashboard/manage",
       products: "/dashboard/manage/products",
+      productImport: "/dashboard/manage/products/import",
+      stock: "/dashboard/manage/stock",
+      reports: "/dashboard/manage/reports",
       loyalty: {
         root: "/dashboard/manage/loyalty",
       },

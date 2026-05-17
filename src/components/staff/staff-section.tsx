@@ -6,6 +6,7 @@ import { createSubUserAction }     from "@/actions/site/create-sub-user";
 import { toast }                   from "sonner";
 import { Button }                  from "@/components/ui/button";
 import { Input }                   from "@/components/ui/input";
+import { Textarea }                from "@/components/ui/textarea";
 import { Label }                   from "@/components/ui/label";
 import { Badge }                   from "@/components/ui/badge";
 import {
@@ -22,7 +23,7 @@ import { Loader2, Plus, User, ChevronDown, ChevronRight, Info } from "lucide-rea
 interface Page     { id: string; key: string; label: string }
 interface Module   { id: string; key: string; label: string; pages: Page[] }
 interface Site     { id: string; name: string }
-interface SubUser  { id: string; name: string | null; username: string }
+interface SubUser  { id: string; name: string | null; username: string; description?: string | null }
 interface Permission { module: { id: string; label: string } | null; page: { id: string; label: string } | null }
 interface SubUserSite {
   subUser:     SubUser;
@@ -240,7 +241,7 @@ function CreateStaffModal({
               <Input
                 id="username"
                 name="username"
-                placeholder="e.g. john_doe"
+                placeholder="e.g. cashier"
                 disabled={isPending}
                 className="lowercase"
                 onChange={(e) => (e.target.value = e.target.value.toLowerCase())}
@@ -258,6 +259,17 @@ function CreateStaffModal({
                 type="password"
                 placeholder="Min. 6 characters"
                 disabled={isPending}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description <span className="text-muted-foreground text-xs font-normal">optional</span></Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="e.g. Evening cashier, stock entry support"
+                disabled={isPending}
+                className="min-h-20 resize-none"
               />
             </div>
           </div>

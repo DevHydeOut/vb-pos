@@ -78,7 +78,7 @@ export function DashboardSidebar({
           <div className="w-8 h-8 bg-foreground rounded-xl flex items-center justify-center shrink-0">
             <span className="text-background text-xs font-black tracking-tight">P</span>
           </div>
-          <span className="text-base font-bold text-sidebar-foreground tracking-tight">POSS</span>
+          <span className="text-base font-bold text-sidebar-foreground tracking-tight">POS Manager</span>
         </Link>
       </div>
 

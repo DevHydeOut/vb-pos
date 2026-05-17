@@ -206,7 +206,7 @@ export function PortalHeader({
           </div>
           <span className="font-semibold text-sm truncate max-w-40">{siteName}</span>
 
-          {!user.isMaster && otherSites.length > 0 && (
+          {otherSites.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs gap-1 rounded-xl shrink-0">
@@ -296,7 +296,9 @@ export function PortalHeader({
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer" asChild>
-                <Link href={`/portal/${siteId}/profile`}><User className="h-4 w-4" /> My Profile</Link>
+                <Link href={user.isMaster ? ROUTES.dashboard.profile : `/portal/${siteId}/profile`}>
+                  <User className="h-4 w-4" /> My Profile
+                </Link>
               </DropdownMenuItem>
               {user.isMaster && (
                 <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer" asChild>

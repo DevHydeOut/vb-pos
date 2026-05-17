@@ -8,12 +8,27 @@ import { StockEntryClient } from "@/components/portal/inventory/stock-entry-clie
 
 async function resolveIdentity(siteId: string) {
   const masterResult = await getMasterProfile().catch(() => null);
-  if (masterResult) return { masterProfileId: masterResult.masterProfile.id, isMaster: true };
+  if (masterResult) {
+    const site = await prisma.site.findFirst({
+      where: { id: siteId, masterProfileId: masterResult.masterProfile.id, isActive: true },
+    });
+    if (!site) return null;
+    return { masterProfileId: masterResult.masterProfile.id, isMaster: true };
+  }
   const staffSession = await getStaffSession().catch(() => null);
   if (staffSession) {
-    const site = await prisma.site.findFirst({ where: { id: siteId } });
-    if (!site) return null;
-    return { masterProfileId: site.masterProfileId, isMaster: false };
+    const subUserSite = await prisma.subUserSite.findUnique({
+      where: { subUserId_siteId: { subUserId: staffSession.subUserId, siteId } },
+      include: { site: true, permissions: { include: { module: true, page: true } } },
+    });
+    if (!subUserSite?.site.isActive) return null;
+    const canAdjust = subUserSite.permissions.some(
+      (permission) =>
+        (permission.module?.key === "inventory" && !permission.page) ||
+        permission.page?.key === "inventory.adjust"
+    );
+    if (!canAdjust) return null;
+    return { masterProfileId: subUserSite.site.masterProfileId, isMaster: false };
   }
   return null;
 }
@@ -28,7 +43,7 @@ export default async function StockAdjustPage({
   if (!identity) notFound();
 
   const [site, products, recentMovements] = await Promise.all([
-    prisma.site.findFirst({ where: { id: siteId, isActive: true } }),
+    prisma.site.findFirst({ where: { id: siteId, masterProfileId: identity.masterProfileId, isActive: true } }),
     prisma.product.findMany({
       where: {
         masterProfileId: identity.masterProfileId,

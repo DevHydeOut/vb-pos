@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ROUTES } from "@/routes";
 import { redirect, notFound } from "next/navigation";
 
-export async function ManageEditProductPage({
+async function ManageEditProductPage({
   params,
 }: {
   params: Promise<{ productId: string }>;

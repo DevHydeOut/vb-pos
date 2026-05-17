@@ -62,6 +62,7 @@ export default async function StaffDetailPage({
         subUser={{
           id:       subUser.id,
           name:     subUser.name,
+          description: subUser.description,
           username: subUser.username,
           isActive: subUser.isActive,
           sites:    subUser.sites.map((s) => ({

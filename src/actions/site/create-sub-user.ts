@@ -7,6 +7,7 @@ import { z }                from "zod";
 
 const schema = z.object({
   name:     z.string().min(2, "Name must be at least 2 characters").max(100),
+  description: z.string().max(300, "Description must be 300 characters or less").optional(),
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
@@ -25,6 +26,7 @@ export async function createSubUserAction(formData: FormData): Promise<CreateRes
 
   const parsed = schema.safeParse({
     name:     formData.get("name"),
+    description: (formData.get("description") as string)?.trim() || undefined,
     username: (formData.get("username") as string)?.toLowerCase().trim(),
     password: formData.get("password"),
   });
@@ -51,6 +53,7 @@ export async function createSubUserAction(formData: FormData): Promise<CreateRes
   const subUser = await prisma.subUser.create({
     data: {
       name:            parsed.data.name,
+      description:     parsed.data.description ?? null,
       username:        parsed.data.username,
       password:        hashedPassword,
       masterProfileId: masterProfile.id,

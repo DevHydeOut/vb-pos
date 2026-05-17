@@ -18,7 +18,7 @@ function inferBackUrl(pathname: string): { url: string; label: string } | null {
   // Portal: product/detail paths fall back to the site home.
   if (/\/portal\/[^/]+\/customers\/[^/]+/.test(p)) {
     const siteId = p.split("/")[2];
-    return { url: `/portal/${siteId}/customers`, label: "Customers" };
+    return { url: `/portal/${siteId}/loyalty/customers`, label: "Customers" };
   }
   // Portal: any deep page → go up one level
   if (/\/portal\/[^/]+\/.+\/.+/.test(p)) {

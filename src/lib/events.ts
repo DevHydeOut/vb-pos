@@ -87,6 +87,21 @@ export type AppEvent =
       masterProfileId: string;
     }
 
+  | {
+      type:            "PRODUCT_CREATED";
+      productId:       string;
+      productName:     string;
+      siteId:          string | null;
+      masterProfileId: string;
+    }
+  | {
+      type:            "CATEGORY_CREATED";
+      categoryId:      string;
+      categoryName:    string;
+      siteId:          string | null;
+      masterProfileId: string;
+    }
+
   // ── Sales / Billing (scaffold — fill when building POS) ───
   | {
       type:            "SALE_COMPLETED";
@@ -286,6 +301,30 @@ async function handleEvent(event: AppEvent): Promise<void> {
       break;
     }
 
+    case "PRODUCT_CREATED":
+      await notifyCatalogSites({
+        masterProfileId: event.masterProfileId,
+        siteId: event.siteId,
+        title: "New Product Added",
+        message: `${event.productName} was added to the catalogue.`,
+        actionPath: "inventory/products",
+        referenceId: event.productId,
+        referenceType: "Product",
+      });
+      break;
+
+    case "CATEGORY_CREATED":
+      await notifyCatalogSites({
+        masterProfileId: event.masterProfileId,
+        siteId: event.siteId,
+        title: "New Category Added",
+        message: `${event.categoryName} was added to product categories.`,
+        actionPath: "inventory/products",
+        referenceId: event.categoryId,
+        referenceType: "Category",
+      });
+      break;
+
     // ── Sale / billing — scaffold, fill when building POS ─────
     case "SALE_COMPLETED":
       // TODO: notify admin dashboard, trigger loyalty points
@@ -371,5 +410,37 @@ async function notify(data: {
       referenceId:     data.referenceId,
       referenceType:   data.referenceType,
     },
+  });
+}
+
+async function notifyCatalogSites(data: {
+  masterProfileId: string;
+  siteId: string | null;
+  title: string;
+  message: string;
+  actionPath: string;
+  referenceId: string;
+  referenceType: string;
+}) {
+  const sites = await prisma.site.findMany({
+    where: {
+      masterProfileId: data.masterProfileId,
+      isActive: true,
+      ...(data.siteId ? { id: data.siteId } : {}),
+    },
+    select: { id: true },
+  });
+
+  await prisma.notification.createMany({
+    data: sites.map((site) => ({
+      type: "SYSTEM",
+      title: data.title,
+      message: data.message,
+      siteId: site.id,
+      masterProfileId: data.masterProfileId,
+      actionUrl: `/portal/${site.id}/${data.actionPath}`,
+      referenceId: data.referenceId,
+      referenceType: data.referenceType,
+    })),
   });
 }

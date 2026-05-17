@@ -772,7 +772,7 @@ export function StockEntryClient({ siteId, site, products, timezone, recentProdu
         Both panels are fixed height. Nothing outside them scrolls.
         ══════════════════════════════════════════════════════════════
       */}
-      <div className="fixed inset-x-0 top-16 bottom-0 flex overflow-hidden">
+      <div className="flex h-full min-h-0 overflow-hidden">
 
         {/* ████████  LEFT — Product Browser  ████████ */}
         {/* flex-col so children stack vertically. overflow-hidden = no outer scroll */}
@@ -883,7 +883,7 @@ export function StockEntryClient({ siteId, site, products, timezone, recentProdu
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                 {filtered.map(p => {
                   const cartQty = cart.filter(i => i.product.id === p.id).reduce((s, i) => s + i.quantity, 0);
                   return <ProductCard key={p.id} product={p} onAdd={quickAdd} cartQty={cartQty} cur={cur} />;
@@ -895,7 +895,7 @@ export function StockEntryClient({ siteId, site, products, timezone, recentProdu
 
         {/* ████████  RIGHT — Cart Panel  ████████ */}
         {/* Fixed width. overflow-hidden on outer. ONLY cart items div scrolls inside. */}
-        <div className="w-90 shrink-0 flex flex-col bg-background overflow-hidden">
+        <div className="w-[420px] shrink-0 flex flex-col bg-background overflow-hidden">
 
           {/* Cart header — fixed, never scrolls */}
           <div className="shrink-0 px-4 py-4 border-b border-border bg-muted/20">

@@ -236,7 +236,7 @@ export function StockTransferNewClient({
           <select
             value={toSiteId}
             onChange={(e) => setToSiteId(e.target.value)}
-            className="w-full text-sm font-semibold bg-transparent border-none outline-none cursor-pointer"
+            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none cursor-pointer focus:ring-2 focus:ring-ring"
           >
             {otherSites.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -269,7 +269,7 @@ export function StockTransferNewClient({
           onChange={(e) => { setSearch(e.target.value); setShowResults(true); }}
           onFocus={() => setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 150)}
-          placeholder="Scan barcode or search product…"
+          placeholder="Scan barcode or search product..."
           className="w-full h-11 pl-10 pr-4 border border-border rounded-xl text-sm bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
@@ -414,7 +414,7 @@ export function StockTransferNewClient({
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Add a note (optional — visible to recipient)"
+        placeholder="Add a note (optional - visible to recipient)"
         className="w-full h-9 px-3 border border-border rounded-xl text-sm bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
@@ -432,8 +432,8 @@ export function StockTransferNewClient({
             className="pointer-events-auto px-8 py-3.5 rounded-2xl font-semibold shadow-lg">
             <Send className="h-4 w-4" />
             {isPending
-              ? "Sending…"
-              : `Send Transfer to ${toSite?.name ?? "—"} — ${totalUnits} units`}
+              ? "Sending..."
+              : `Send Transfer to ${toSite?.name ?? "site"} - ${totalUnits} units`}
           </Button>
         </div>
       )}

@@ -53,6 +53,73 @@ function startOfToday() {
   return date;
 }
 
+function dateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildDailySales(orders: { createdAt: Date; grandTotal: number }[], days: number) {
+  const buckets = Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (days - 1 - index));
+    return {
+      key: dateKey(date),
+      label: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      total: 0,
+      bills: 0,
+    };
+  });
+  const byKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+  for (const order of orders) {
+    const key = dateKey(order.createdAt);
+    const bucket = byKey.get(key);
+    if (bucket) {
+      bucket.total += order.grandTotal;
+      bucket.bills += 1;
+    }
+  }
+
+  return buckets;
+}
+
+function SalesBarChart({
+  data,
+  currencySymbol,
+}: {
+  data: { key: string; label: string; total: number; bills: number }[];
+  currencySymbol: string;
+}) {
+  const max = Math.max(...data.map((day) => day.total), 1);
+
+  return (
+    <div className="mt-5 h-64 rounded-xl border border-border bg-muted/20 px-4 pb-4 pt-6">
+      <div className="flex h-full items-end gap-2">
+        {data.map((day) => {
+          const height = Math.max(day.total > 0 ? 12 : 3, Math.round((day.total / max) * 180));
+          return (
+            <div key={day.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+              <div className="flex h-[190px] w-full items-end justify-center">
+                <div
+                  className="w-full max-w-12 rounded-t-md bg-foreground transition-all"
+                  style={{ height }}
+                  title={`${day.label}: ${currencySymbol}${day.total.toFixed(2)} from ${day.bills} bills`}
+                />
+              </div>
+              <div className="w-full text-center">
+                <p className="truncate text-[11px] text-muted-foreground">{day.label}</p>
+                <p className="truncate text-[11px] font-semibold tabular-nums">
+                  {day.total > 0 ? money(currencySymbol, day.total) : "-"}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default async function BillingAnalyticsPage({
   params,
 }: {
@@ -113,6 +180,7 @@ export default async function BillingAnalyticsPage({
   const topProducts = [...productStats.values()]
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
+  const dailySales = buildDailySales(orders, 14);
 
   const cards = [
     { label: "Today Sales", value: money(access.currencySymbol, todaySales), icon: TrendingUp },
@@ -151,6 +219,37 @@ export default async function BillingAnalyticsPage({
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold">Sales Trend</h2>
+              <p className="text-xs text-muted-foreground">Daily bill value for the last 14 days</p>
+            </div>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <SalesBarChart data={dailySales} currencySymbol={access.currencySymbol} />
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="font-semibold">Operational Snapshot</h2>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-sm text-muted-foreground">Low stock items</span>
+              <span className="font-bold">{lowStockCount}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-sm text-muted-foreground">Customers with points</span>
+              <span className="font-bold">{customerPointCount}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+              <span className="text-sm text-muted-foreground">Bills in last 30 days</span>
+              <span className="font-bold">{orders.length}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <section className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
             <h2 className="font-semibold">Top Products</h2>
             <span className="text-xs text-muted-foreground">Last 30 days</span>
           </div>
@@ -173,20 +272,26 @@ export default async function BillingAnalyticsPage({
         </section>
 
         <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Operational Snapshot</h2>
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Low stock items</span>
-              <span className="font-bold">{lowStockCount}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Customers with points</span>
-              <span className="font-bold">{customerPointCount}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-              <span className="text-sm text-muted-foreground">Bills in last 30 days</span>
-              <span className="font-bold">{orders.length}</span>
-            </div>
+          <h2 className="font-semibold">Bill Mix</h2>
+          <div className="mt-4 space-y-4">
+            {[
+              { label: "Item discounts", value: discountTotal, max: Math.max(periodSales, 1) },
+              { label: "Tax collected", value: orders.reduce((sum, order) => sum + order.taxTotal, 0), max: Math.max(periodSales, 1) },
+              { label: "Net billed", value: periodSales, max: Math.max(periodSales, 1) },
+            ].map((row) => (
+              <div key={row.label} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="font-semibold">{money(access.currencySymbol, row.value)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-foreground"
+                    style={{ width: `${Math.min(100, Math.round((row.value / row.max) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </div>

@@ -9,6 +9,11 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  session: {
+    expiresIn: 60 * 60,
+    updateAge: 5 * 60,
+  },
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,

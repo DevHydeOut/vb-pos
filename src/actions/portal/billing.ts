@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getMasterProfile } from "@/data/master";
 import { getStaffSession } from "@/actions/auth/staff";
+import { fireEvent } from "@/lib/events";
 import { z } from "zod";
+
+export type PaymentMethod = "CASH" | "CARD" | "ONLINE";
 
 type BillingResult =
   | {
@@ -16,6 +19,7 @@ type BillingResult =
       rewardDiscountTotal: number;
       taxTotal: number;
       grandTotal: number;
+      paymentMethod: PaymentMethod;
     }
   | { success: false; error: string };
 
@@ -32,6 +36,7 @@ const saleSchema = z.object({
   customerPhone: z.string().trim().min(5, "Phone number is required"),
   customerName: z.string().trim().optional(),
   rewardId: z.string().trim().optional(),
+  paymentMethod: z.enum(["CASH", "CARD", "ONLINE"]).default("CASH"),
   items: z.array(lineSchema).min(1, "Add at least one item"),
 });
 
@@ -94,7 +99,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
     const parsed = saleSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-    const { siteId, customerPhone, customerName, rewardId, items } = parsed.data;
+    const { siteId, customerPhone, customerName, rewardId, paymentMethod, items } = parsed.data;
     const identity = await resolveIdentity(siteId);
 
     const [site, program, products] = await Promise.all([
@@ -294,6 +299,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
           rewardDiscountTotal,
           taxTotal,
           grandTotal,
+          paymentMethod,
           pointsEarned,
           rewardId: reward?.id ?? null,
           rewardName: reward?.name ?? null,
@@ -386,6 +392,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
             rewardDiscountTotal,
             taxTotal,
             grandTotal,
+            paymentMethod,
             rewardId: reward?.id ?? null,
             lines: saleLines.map((line) => ({
               productId: line.product.id,
@@ -464,6 +471,16 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
           },
         });
       }
+
+      fireEvent({
+        type: "SALE_COMPLETED",
+        saleId: order.id,
+        referenceNo,
+        siteId,
+        totalAmount: grandTotal,
+        customerId: customer.id,
+        masterProfileId: identity.masterProfileId,
+      });
     });
 
     revalidatePath(`/portal/${siteId}/billing/pos`);
@@ -479,6 +496,7 @@ export async function completePosSaleAction(input: unknown): Promise<BillingResu
       rewardDiscountTotal,
       taxTotal,
       grandTotal,
+      paymentMethod,
     };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to complete bill" };

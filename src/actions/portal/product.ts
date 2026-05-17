@@ -6,6 +6,7 @@ import { getStaffSession }  from "@/actions/auth/staff";
 import { revalidatePath }   from "next/cache";
 import { z }                from "zod";
 import { createClient }     from "@supabase/supabase-js";
+import { fireEvent }        from "@/lib/events";
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -139,6 +140,13 @@ export async function createProductAction(
     });
 
     revalidateProduct(siteId, product.id);
+    fireEvent({
+      type: "PRODUCT_CREATED",
+      productId: product.id,
+      productName: product.name,
+      siteId,
+      masterProfileId: identity.masterProfileId,
+    });
     return { success: true, productId: product.id };
   } catch (e) {
     return { success: false, error: "Failed to create product" };

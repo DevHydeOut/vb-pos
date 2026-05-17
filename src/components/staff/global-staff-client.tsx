@@ -10,6 +10,7 @@ import { createSubUserAction } from "@/actions/site/create-sub-user";
 
 import { Button }  from "@/components/ui/button";
 import { Input }   from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label }   from "@/components/ui/label";
 import { Badge }   from "@/components/ui/badge";
 import {
@@ -28,7 +29,7 @@ interface SiteSimple { id: string; name: string }
 interface PermRow    { module: { id: string } | null; page: { id: string } | null }
 interface SiteAssign { siteId: string; site: SiteSimple; permissions: PermRow[] }
 interface SubUser {
-  id: string; name: string | null; username: string;
+  id: string; name: string | null; username: string; description: string | null;
   isActive: boolean; createdAt: Date; sites: SiteAssign[];
 }
 
@@ -87,10 +88,23 @@ function CreateStaffModal({ open, onOpenChange, onSuccess }: {
             <Label htmlFor="username" className="text-sm font-medium">
               Username <span className="text-destructive">*</span>
             </Label>
-            <Input id="username" name="username" placeholder="e.g. john_doe"
+            <Input id="username" name="username" placeholder="e.g. cashier"
               disabled={isPending} className="h-11"
               onChange={(e) => (e.target.value = e.target.value.toLowerCase())} />
             <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and underscores only.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">
+              Description <span className="text-muted-foreground text-xs font-normal">optional</span>
+            </Label>
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="e.g. Morning shift cashier, handles billing and stock entry"
+              disabled={isPending}
+              className="min-h-20 resize-none"
+            />
           </div>
 
           <div className="space-y-2">
@@ -380,6 +394,9 @@ function StaffListRow({ staff }: { staff: SubUser }) {
           )}
         </div>
         <p className="text-xs text-muted-foreground">@{staff.username}</p>
+        {staff.description && (
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{staff.description}</p>
+        )}
       </div>
 
       {/* Site pills */}
@@ -447,6 +464,9 @@ function StaffGridCard({ staff }: { staff: SubUser }) {
       <div>
         <p className="font-semibold text-foreground">{staff.name ?? staff.username}</p>
         <p className="text-xs text-muted-foreground">@{staff.username}</p>
+        {staff.description && (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{staff.description}</p>
+        )}
       </div>
 
       {/* Sites */}

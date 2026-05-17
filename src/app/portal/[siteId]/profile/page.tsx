@@ -4,7 +4,7 @@ import { prisma }               from "@/lib/prisma";
 import { redirect }             from "next/navigation";
 import { ROUTES }               from "@/routes";
 
-export async function SubUserProfilePage({
+async function SubUserProfilePage({
   params,
 }: {
   params: Promise<{ siteId: string }>;

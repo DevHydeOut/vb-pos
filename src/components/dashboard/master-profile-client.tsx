@@ -193,7 +193,7 @@ export function MasterProfileClient({ profile }: { profile: MasterProfileData })
           <div className="relative">
             <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="e.g. Sharma Enterprises" className="h-11 pl-11" />
+              placeholder="e.g. Main Store Retail" className="h-11 pl-11" />
           </div>
         </div>
 

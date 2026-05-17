@@ -1,9 +1,50 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getMasterProfile } from "@/data/master";
+import { getStaffSession } from "@/actions/auth/staff";
 import { prisma } from "@/lib/prisma";
 import { ROUTES } from "@/routes";
 import { LoyaltyManageClient } from "@/components/portal/loyalty/loyalty-manage-client";
+
+async function resolveAccess(siteId: string) {
+  const masterResult = await getMasterProfile().catch(() => null);
+  if (masterResult) {
+    const site = await prisma.site.findFirst({
+      where: { id: siteId, masterProfileId: masterResult.masterProfile.id, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!site) notFound();
+    return {
+      masterProfileId: masterResult.masterProfile.id,
+      currencySymbol: masterResult.masterProfile.currencySymbol,
+      siteName: site.name,
+      isMaster: true,
+    };
+  }
+
+  const staffSession = await getStaffSession().catch(() => null);
+  if (!staffSession) redirect(ROUTES.auth.login);
+
+  const subUserSite = await prisma.subUserSite.findUnique({
+    where: { subUserId_siteId: { subUserId: staffSession.subUserId, siteId } },
+    include: { site: true, permissions: { include: { module: true, page: true } } },
+  });
+  if (!subUserSite?.site.isActive) notFound();
+
+  const canManageRewards = subUserSite.permissions.some(
+    (permission) =>
+      (permission.module?.key === "loyalty" && !permission.page) ||
+      permission.page?.key === "loyalty.rewards"
+  );
+  if (!canManageRewards) notFound();
+
+  return {
+    masterProfileId: subUserSite.site.masterProfileId,
+    currencySymbol: subUserSite.site.currencySymbol,
+    siteName: subUserSite.site.name,
+    isMaster: false,
+  };
+}
 
 export default async function LoyaltyRewardsPage({
   params,
@@ -11,15 +52,11 @@ export default async function LoyaltyRewardsPage({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
-  const result = await getMasterProfile().catch(() => null);
-  if (!result) redirect(ROUTES.auth.login);
+  const access = await resolveAccess(siteId);
 
-  const { masterProfile } = result;
-
-  const [site, program, products, categories, sites] = await Promise.all([
-    prisma.site.findFirst({ where: { id: siteId, masterProfileId: masterProfile.id, isActive: true } }),
+  const [program, products, categories, sites] = await Promise.all([
     prisma.loyaltyProgram.findUnique({
-      where: { masterProfileId: masterProfile.id },
+      where: { masterProfileId: access.masterProfileId },
       include: {
         rewards: {
           where: { deletedAt: null },
@@ -37,28 +74,26 @@ export default async function LoyaltyRewardsPage({
       },
     }),
     prisma.product.findMany({
-      where: { masterProfileId: masterProfile.id, deletedAt: null, isActive: true },
+      where: { masterProfileId: access.masterProfileId, deletedAt: null, isActive: true },
       select: { id: true, name: true, sellingPrice: true },
       orderBy: { name: "asc" },
     }),
     prisma.category.findMany({
-      where: { masterProfileId: masterProfile.id, deletedAt: null },
+      where: { masterProfileId: access.masterProfileId, deletedAt: null },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     prisma.site.findMany({
-      where: { masterProfileId: masterProfile.id, isActive: true },
+      where: { masterProfileId: access.masterProfileId, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
   ]);
 
-  if (!site) redirect(ROUTES.dashboard.sites);
-
   return (
     <main className="px-6 py-10 max-w-5xl space-y-8">
       <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">{site.name}</p>
+        <p className="text-sm text-muted-foreground">{access.siteName}</p>
         <h1 className="text-3xl font-bold tracking-tight">Royalty Points</h1>
         <p className="text-sm text-muted-foreground">
           Rewards and earning rules are global, so customers can claim points from any site.
@@ -74,12 +109,14 @@ export default async function LoyaltyRewardsPage({
           <p className="text-sm text-muted-foreground max-w-sm">
             Enable the points program before creating rewards and earning rules.
           </p>
-          <Link
-            href={ROUTES.dashboard.globalSettings.loyalty}
-            className="mt-2 px-4 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium"
-          >
-            Open Settings
-          </Link>
+          {access.isMaster && (
+            <Link
+              href={ROUTES.dashboard.globalSettings.loyalty}
+              className="mt-2 px-4 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium"
+            >
+              Open Settings
+            </Link>
+          )}
         </div>
       ) : (
         <LoyaltyManageClient
@@ -117,7 +154,7 @@ export default async function LoyaltyRewardsPage({
           categories={categories}
           sites={sites}
           pointsName={program.pointsName}
-          currencySymbol={masterProfile.currencySymbol ?? "$"}
+          currencySymbol={access.currencySymbol ?? "$"}
         />
       )}
     </main>

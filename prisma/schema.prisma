@@ -235,6 +235,7 @@ model SubUser {
   username        String
   password        String
   name            String?
+  description     String?
   phone           String?
   avatarUrl       String?
   language        String        @default("en")
@@ -687,6 +688,7 @@ model SaleOrder {
   rewardDiscountTotal Float              @default(0)
   taxTotal            Float              @default(0)
   grandTotal          Float
+  paymentMethod       String             @default("CASH")
   pointsEarned        Int                @default(0)
 
   rewardId            String?

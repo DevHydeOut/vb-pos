@@ -12,10 +12,28 @@ export default async function StockLevelsPage({
   const masterResult = await getMasterProfile().catch(() => null);
   const staffSession = await getStaffSession().catch(() => null);
   if (!masterResult && !staffSession) redirect(ROUTES.auth.login);
- 
-  const masterProfileId = masterResult
-    ? masterResult.masterProfile.id
-    : (await prisma.site.findUnique({ where: { id: siteId } }))!.masterProfileId;
+
+  let masterProfileId: string;
+  if (masterResult) {
+    const siteAccess = await prisma.site.findFirst({
+      where: { id: siteId, masterProfileId: masterResult.masterProfile.id, isActive: true },
+      select: { masterProfileId: true },
+    });
+    if (!siteAccess) redirect(ROUTES.auth.login);
+    masterProfileId = siteAccess.masterProfileId;
+  } else {
+    const siteAccess = await prisma.subUserSite.findUnique({
+      where: { subUserId_siteId: { subUserId: staffSession!.subUserId, siteId } },
+      include: { site: { select: { masterProfileId: true, isActive: true } }, permissions: { include: { module: true, page: true } } },
+    });
+    const canViewStock = siteAccess?.site.isActive && siteAccess.permissions.some(
+      (permission) =>
+        (permission.module?.key === "inventory" && !permission.page) ||
+        permission.page?.key === "inventory.stock"
+    );
+    if (!siteAccess || !canViewStock) redirect(ROUTES.auth.login);
+    masterProfileId = siteAccess.site.masterProfileId;
+  }
  
   const [products, master] = await Promise.all([
     prisma.product.findMany({

@@ -8,7 +8,7 @@ import { ROUTES }           from "@/routes";
 import { verify }           from "@node-rs/argon2";
 
 const STAFF_SESSION_COOKIE = "staff_session";
-const SESSION_DURATION_MS  = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_DURATION_MS  = 60 * 60 * 1000; // 1 hour idle session
 const MAX_ATTEMPTS         = 3;
 const LOCKOUT_MINUTES      = 15;
 const LOCKOUT_MS           = LOCKOUT_MINUTES * 60 * 1000;
@@ -229,7 +229,20 @@ export async function getStaffSession() {
     return null;
   }
 
-  return session;
+  const refreshedExpiry = new Date(Date.now() + SESSION_DURATION_MS);
+  await prisma.staffSession.update({
+    where: { token },
+    data: { expiresAt: refreshedExpiry },
+  });
+  cookieStore.set(STAFF_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    expires: refreshedExpiry,
+    path: "/",
+  });
+
+  return { ...session, expiresAt: refreshedExpiry };
 }
 
 /* ── Staff Sign Out ─────────────────────────────────────── */

@@ -22,7 +22,6 @@ export function StaffForm() {
 
       if (res.success) {
         router.push(ROUTES.staff.sitePicker);
-        router.refresh();
       } else {
         setError(res.error);
 
@@ -71,12 +70,12 @@ export function StaffForm() {
         </label>
         <Input
           name="accountId"
-          placeholder="ACC-123456"
+          placeholder="DEMO-001"
           disabled={isPending || locked}
           className="uppercase tracking-widest font-mono h-11"
           onChange={(e) => (e.target.value = e.target.value.toUpperCase())}
         />
-        <p className="text-xs text-muted-foreground">Provided by your administrator</p>
+        <p className="text-xs text-muted-foreground">Provided by the master admin</p>
       </div>
 
       {/* Username */}
@@ -87,7 +86,7 @@ export function StaffForm() {
         </label>
         <Input
           name="username"
-          placeholder="john_doe"
+          placeholder="cashier"
           disabled={isPending || locked}
           className="h-11"
         />
@@ -102,13 +101,13 @@ export function StaffForm() {
         <Input
           name="password"
           type="password"
-          placeholder="••••••••"
+          placeholder="Password"
           disabled={isPending || locked}
           className="h-11"
         />
       </div>
 
-      {/* Attempt dots — 3 circles that go red as attempts are used */}
+      {/* Attempt dots: three circles that go red as attempts are used */}
       {attemptsLeft !== null && !locked && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Attempts:</span>

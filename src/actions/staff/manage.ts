@@ -13,9 +13,11 @@ export async function updateSubUserAction(formData: FormData): Promise<ActionRes
   const { masterProfile } = await getMasterProfile();
   const subUserId = formData.get("subUserId") as string;
   const name      = (formData.get("name") as string).trim();
+  const description = ((formData.get("description") as string) ?? "").trim();
   const username  = (formData.get("username") as string).toLowerCase().trim();
 
   if (!name || !username) return { success: false, error: "Name and username are required" };
+  if (description.length > 300) return { success: false, error: "Description must be 300 characters or less" };
   if (!/^[a-z0-9_]+$/.test(username)) return { success: false, error: "Username: only lowercase letters, numbers, underscores" };
 
   const subUser = await prisma.subUser.findFirst({
@@ -28,7 +30,7 @@ export async function updateSubUserAction(formData: FormData): Promise<ActionRes
   });
   if (taken) return { success: false, error: "Username already taken" };
 
-  await prisma.subUser.update({ where: { id: subUserId }, data: { name, username } });
+  await prisma.subUser.update({ where: { id: subUserId }, data: { name, username, description: description || null } });
   return { success: true };
 }
 

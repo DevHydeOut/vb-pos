@@ -16,14 +16,12 @@ export function LoginForm() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       
       <div className="text-center space-y-3">
-        <h1 className="text-3xl font-semibold text-slate-900">
-          Welcome back
-        </h1>
-        <p className="text-sm text-slate-500">
-          Sign in to access your dashboard
+        <h1 className="text-2xl font-semibold text-foreground">Master admin access</h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to manage sites, staff, products, billing and royalty points.
         </p>
       </div>
 
@@ -31,7 +29,7 @@ export function LoginForm() {
         onClick={handleGoogleLogin}
         disabled={loading}
         variant="outline"
-        className="w-full h-14 text-base font-medium rounded-xl border-slate-300 hover:bg-slate-50 transition-all duration-200 flex items-center justify-center gap-3"
+        className="w-full h-12 text-sm font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3"
       >
         <svg
           strokeLinejoin="round"
@@ -47,9 +45,8 @@ export function LoginForm() {
         {loading ? "Signing in..." : "Continue with Google"}
       </Button>
 
-      {/* Optional Footer */}
-      <p className="text-xs text-center text-slate-400">
-        Secure authentication powered by Google
+      <p className="text-xs text-center text-muted-foreground">
+        Google sign-in gives the first owner master admin access.
       </p>
     </div>
   );

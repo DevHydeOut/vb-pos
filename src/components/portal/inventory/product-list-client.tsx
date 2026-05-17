@@ -11,7 +11,7 @@ import {
   Search, Plus, ScanBarcode, X, Filter,
   MoreHorizontal, Trash2, Copy, ChevronDown,
   Package, AlertTriangle, CheckCircle, XCircle,
-  Loader2,
+  Loader2, Upload,
 } from "lucide-react";
 import { Button }  from "@/components/ui/button";
 import { Input }   from "@/components/ui/input";
@@ -323,6 +323,16 @@ export function ProductListClient({
         <Button variant="outline" className="h-10 gap-2" onClick={() => setScanOpen(true)}>
           <ScanBarcode className="h-4 w-4" /> Scan
         </Button>
+
+        {isMaster && (
+          <Button
+            variant="outline"
+            className="h-10 gap-2"
+            onClick={() => router.push("/dashboard/manage/products/import")}
+          >
+            <Upload className="h-4 w-4" /> Import
+          </Button>
+        )}
 
         {/* Push selected */}
         {isMaster && selected.length > 0 && (

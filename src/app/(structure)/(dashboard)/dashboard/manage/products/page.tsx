@@ -3,7 +3,7 @@ import { getMasterProfile } from "@/data/master";
 import { prisma } from "@/lib/prisma";
 import { ROUTES } from "@/routes";
 import { redirect } from "next/navigation";
-export async function ManageProductsPage() {
+async function ManageProductsPage() {
   const result = await getMasterProfile();
   if (!result) redirect(ROUTES.auth.login);
   const { masterProfile } = result;

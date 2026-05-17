@@ -13,6 +13,7 @@ import {
 import { ROUTES }  from "@/routes";
 import { Button }  from "@/components/ui/button";
 import { Input }   from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label }   from "@/components/ui/label";
 import { Badge }   from "@/components/ui/badge";
 import { Switch }  from "@/components/ui/switch";
@@ -35,7 +36,7 @@ interface Site       { id: string; name: string }
 interface PermRow    { module: { id: string; label: string } | null; page: { id: string; label: string } | null }
 interface SiteAssign { siteId: string; site: Site; permissions: PermRow[] }
 interface SubUser    {
-  id: string; name: string | null; username: string;
+  id: string; name: string | null; description: string | null; username: string;
   isActive: boolean; sites: SiteAssign[];
 }
 
@@ -149,6 +150,7 @@ export function StaffDetailClient({ subUser, allSites, modules }: {
 
   // Track unsaved changes in basic details
   const [nameVal,     setNameVal]      = useState(subUser.name ?? "");
+  const [descriptionVal, setDescriptionVal] = useState(subUser.description ?? "");
   const [usernameVal, setUsernameVal]  = useState(subUser.username);
   const [newPassword, setNewPassword]  = useState("");
 
@@ -175,6 +177,7 @@ export function StaffDetailClient({ subUser, allSites, modules }: {
     const fd = new FormData();
     fd.append("subUserId", subUser.id);
     fd.append("name",      nameVal.trim());
+    fd.append("description", descriptionVal.trim());
     fd.append("username",  usernameVal.trim());
     startTransition(async () => {
       const res = await updateSubUserAction(fd);
@@ -282,8 +285,21 @@ export function StaffDetailClient({ subUser, allSites, modules }: {
               </Label>
               <Input id="username" value={usernameVal}
                 onChange={(e) => setUsernameVal(e.target.value.toLowerCase())}
-                placeholder="e.g. john_doe" disabled={isPending} className="h-11" />
+                placeholder="e.g. cashier" disabled={isPending} className="h-11" />
               <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and underscores only.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description <span className="text-muted-foreground text-xs font-normal">optional</span>
+              </Label>
+              <Textarea
+                id="description"
+                value={descriptionVal}
+                onChange={(e) => setDescriptionVal(e.target.value)}
+                placeholder="Role notes or shift details"
+                disabled={isPending}
+                className="min-h-24 resize-none"
+              />
             </div>
           </div>
         </section>
